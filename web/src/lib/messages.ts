@@ -149,8 +149,8 @@ export const messages = {
   "home.services": ["Services you can request", "যে সেবাগুলোর জন্য আবেদন করা যায়"],
   "home.tryDemo": ["Demo accounts", "ডেমো অ্যাকাউন্ট"],
   "home.tryDemoHint": [
-    "Log in as a citizen or an officer with the accounts listed in the project README.",
-    "প্রজেক্টের README-তে দেওয়া অ্যাকাউন্ট দিয়ে নাগরিক বা কর্মকর্তা হিসেবে লগইন করুন।",
+    "Synthetic accounts: log in as a citizen or an officer. More numbers are in the project README.",
+    "কৃত্রিম অ্যাকাউন্ট: নাগরিক বা কর্মকর্তা হিসেবে লগইন করুন। আরও নম্বর প্রজেক্টের README-তে আছে।",
   ],
 
   // --- profile -----------------------------------------------------------------------------
@@ -218,6 +218,7 @@ export const messages = {
   "req.newTitle": ["New request", "নতুন আবেদন"],
   "req.editTitle": ["Edit draft", "খসড়া সম্পাদনা"],
   "req.pickService": ["Choose a service", "সেবা বেছে নিন"],
+  "req.choose": ["Choose…", "বেছে নিন…"],
   "req.title": ["Subject", "বিষয়"],
   "req.titleHint": ["One line: what you need.", "এক লাইনে: আপনার কী প্রয়োজন।"],
   "req.description": ["Details", "বিস্তারিত"],

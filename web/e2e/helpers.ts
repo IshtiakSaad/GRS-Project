@@ -71,14 +71,16 @@ export async function logout(page: Page) {
   await expect(page).toHaveURL(/\/login\//);
 }
 
-/** The newest code the demo SMS provider "sent" to a number. */
-export async function smsCode(page: Page, phone: string): Promise<string> {
+/** The newest code the demo SMS provider "sent" to a number; `after`: wait for one newer than it
+ * (texts go out through the worker, so a fresh code can take a moment to arrive). */
+export async function smsCode(page: Page, phone: string, after?: string): Promise<string> {
   let code = "";
   await expect(async () => {
     const res = await page.request.get(`/api/v1/demo/sms/${phone}`);
     const rows = (await res.json()) as { body: string }[];
     const match = rows[0]?.body.match(/\d{6}/) ?? rows[0]?.body.match(/[০-৯]{6}/);
     expect(match).toBeTruthy();
+    expect(match![0]).not.toEqual(after);
     code = match![0];
   }).toPass({ timeout: 20_000 });
   return code;

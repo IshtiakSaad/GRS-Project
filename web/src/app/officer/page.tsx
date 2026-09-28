@@ -12,8 +12,7 @@ import { call, get, qs } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useCategories } from "@/lib/directory";
 import { useI18n } from "@/lib/i18n";
-import { usePaged } from "@/lib/paged";
-import type { Queue, RequestRow, ServiceRequest } from "@/lib/types";
+import { OPEN_STATUSES, type Page, type Queue, type RequestRow, type ServiceRequest } from "@/lib/types";
 
 function OfficerHome() {
   const { t } = useI18n();
@@ -24,7 +23,7 @@ function OfficerHome() {
   const [busy, setBusy] = useState(false);
   const [empty, setEmpty] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const mine = usePaged<RequestRow>(me ? `requests${qs({ officer: me.id })}` : null);
+  const [mine, setMine] = useState<RequestRow[] | null>(null);
 
   const loadQueue = useCallback(async () => {
     try {
@@ -34,9 +33,26 @@ function OfficerHome() {
     }
   }, []);
 
+  // Only the open ones, asked of the API per status: filtering a page here would hide open
+  // requests behind a page of closed ones. Soonest deadline first.
+  const loadMine = useCallback(async () => {
+    if (!me) return;
+    try {
+      const pages = await Promise.all(
+        OPEN_STATUSES.map((status) => get<Page<RequestRow>>(`requests${qs({ officer: me.id, status, page_size: 50 })}`)),
+      );
+      const rows = pages.flatMap((p) => p.results);
+      rows.sort((a, b) => (a.due_at ?? "9").localeCompare(b.due_at ?? "9"));
+      setMine(rows);
+    } catch (err) {
+      setError(err);
+    }
+  }, [me]);
+
   useEffect(() => {
     loadQueue();
-  }, [loadQueue]);
+    loadMine();
+  }, [loadQueue, loadMine]);
 
   async function takeNext() {
     setBusy(true);
@@ -57,9 +73,6 @@ function OfficerHome() {
     }
   }
 
-  // Closed requests stay in "mine" for reference; the open ones matter here.
-  const openMine = mine.rows?.filter((r) => !["RESOLVED", "REJECTED", "WITHDRAWN"].includes(r.status)) ?? null;
-
   return (
     <div className="space-y-6">
       <PageTitle>{t("queue.title")}</PageTitle>
@@ -77,7 +90,7 @@ function OfficerHome() {
 
       <section>
         <SectionTitle>{t("queue.mine")}</SectionTitle>
-        <RequestList {...mine} rows={openMine} staff categories={categories} />
+        <RequestList rows={mine} staff categories={categories} />
       </section>
 
       {queue && queue.requests.length > 0 && (

@@ -59,7 +59,10 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
       setLang,
       num,
       t: (key, vars) => {
-        let s: string = messages[key][lang === "bn" ? 1 : 0];
+        // A code the API added after this build (a new role, reason or event) shows as
+        // itself instead of breaking the page.
+        const entry = messages[key] as readonly [string, string] | undefined;
+        let s: string = entry ? entry[lang === "bn" ? 1 : 0] : String(key).split(".").pop()!;
         if (vars) {
           for (const [k, v] of Object.entries(vars)) {
             s = s.replaceAll(`{${k}}`, typeof v === "number" ? num(v) : v);

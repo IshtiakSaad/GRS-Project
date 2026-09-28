@@ -35,7 +35,7 @@ function Report() {
               <li key={`${e.at}-${i}`} className="py-3 text-sm">
                 <p>
                   <span className="font-medium">{e.actor.name}</span> · {name(e.office)} ·{" "}
-                  <Link href={viewHref(e.request.id)} className="text-brand-700 underline">
+                  <Link href={viewHref(e.request.id)} className="whitespace-nowrap text-brand-700 underline">
                     {num(e.request.tracking_no)}
                   </Link>
                 </p>

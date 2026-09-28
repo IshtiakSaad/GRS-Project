@@ -6,10 +6,17 @@ import { ButtonLink, Card, SectionTitle } from "@/components/ui";
 import { get } from "@/lib/api";
 import { homeFor, useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
+import type { Key } from "@/lib/messages";
 import type { Category } from "@/lib/types";
 
+// Public demo accounts (synthetic, on the unassigned +880 10 prefix), as in the README.
+const DEMO_ACCOUNTS: [Key, string][] = [
+  ["role.CITIZEN", "01000000101"],
+  ["role.OFFICER", "01000000014"],
+];
+
 export default function Home() {
-  const { t, name, num } = useI18n();
+  const { t, name } = useI18n();
   const { me } = useAuth();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
@@ -54,9 +61,16 @@ export default function Home() {
       <Card>
         <SectionTitle>{t("home.tryDemo")}</SectionTitle>
         <p className="text-sm text-slate-600">{t("home.tryDemoHint")}</p>
-        <p className="mt-2 text-sm text-slate-600">
-          {t("common.phone")}: {num("01000000101")} · {t("common.password")}: demo-password-2026
-        </p>
+        <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
+          {DEMO_ACCOUNTS.map(([role, phone]) => (
+            <div key={role} className="rounded-lg bg-slate-50 px-3 py-2">
+              <dt className="font-medium">{t(role)}</dt>
+              <dd className="text-slate-600">
+                {phone} · demo-password-2026
+              </dd>
+            </div>
+          ))}
+        </dl>
       </Card>
     </div>
   );

@@ -91,10 +91,6 @@ function NewRequest() {
     );
   }, [params, router]);
 
-  useEffect(() => {
-    if (!form.category && categories.length) setForm((f) => ({ ...f, category: categories[0].code }));
-  }, [categories, form.category]);
-
   function body() {
     return {
       category: form.category,
@@ -201,10 +197,14 @@ function NewRequest() {
             label={t("req.pickService")}
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
-            options={categories.map((c) => ({
-              value: c.code,
-              label: `${name(c)} (${t("common.days", { n: c.target_working_days })})`,
-            }))}
+            // No default: a service picked for the citizen is a request sent to the wrong office.
+            options={[
+              { value: "", label: t("req.choose") },
+              ...categories.map((c) => ({
+                value: c.code,
+                label: `${name(c)} (${t("common.days", { n: c.target_working_days })})`,
+              })),
+            ]}
             error={fieldError(error, "category")}
           />
           <TextInput
@@ -317,7 +317,7 @@ function NewRequest() {
             <Button type="submit" busy={busy === "submit"} disabled={!!busy || !form.category}>
               {t("req.submit")}
             </Button>
-            <Button variant="secondary" busy={busy === "save"} disabled={!!busy} onClick={() => run("save")}>
+            <Button variant="secondary" busy={busy === "save"} disabled={!!busy || !form.category} onClick={() => run("save")}>
               {t("req.saveDraft")}
             </Button>
           </div>
