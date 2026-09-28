@@ -189,6 +189,8 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "EXCEPTION_HANDLER": "apps.common.errors.exception_handler",
     "DEFAULT_PAGINATION_CLASS": "apps.common.pagination.KeysetPagination",
+    # Every view passes through it; views name their own limits (apps/common/ratelimit.py).
+    "DEFAULT_THROTTLE_CLASSES": ["apps.common.ratelimit.RateLimit"],
     "UNAUTHENTICATED_USER": None,
 }
 
@@ -208,6 +210,7 @@ SPECTACULAR_SETTINGS = {
         "RejectionReasonEnum": "apps.service_requests.models.RejectionReason",
         "RequestStatusEnum": "apps.service_requests.models.Status",
         "AttachmentStatusEnum": "apps.collab.models.AttachmentStatus",
+        "BreakGlassReasonEnum": "apps.audit.models.BreakGlassReason",
     },
 }
 

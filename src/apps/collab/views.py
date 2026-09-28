@@ -7,7 +7,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.permissions import IsAnyUser
-from apps.common import idempotency
+from apps.audit import access
+from apps.audit.models import AccessKind
+from apps.common import idempotency, ratelimit
 from apps.common.pagination import OldestFirstPagination
 from apps.common.schema import errors
 
@@ -31,6 +33,7 @@ def _input(serializer_class, request):
 
 class CommentsView(APIView):
     permission_classes = [IsAnyUser]
+    rate_limits = {"POST": ratelimit.COMMENT}
 
     @extend_schema(
         tags=TAG,
@@ -39,6 +42,7 @@ class CommentsView(APIView):
     )
     def get(self, request, request_id):
         req = services.visible_request(request.user, request_id)
+        access.record(request.user, req)
         paginator = OldestFirstPagination()
         page = paginator.paginate_queryset(services.comments_for(request.user, req), request)
         data = serializers.CommentOut(page, many=True, context={"viewer": request.user}).data
@@ -61,7 +65,7 @@ class CommentsView(APIView):
     )
     def post(self, request, request_id):
         data = _input(serializers.CommentIn, request)
-        comment, _req = services.add_comment(
+        comment, req = services.add_comment(
             request.user,
             request_id,
             data["body"],
@@ -69,12 +73,14 @@ class CommentsView(APIView):
             respond=data["respond"],
             http_request=request,
         )
+        access.record(request.user, req, AccessKind.UPDATE)
         body = serializers.CommentOut(comment, context={"viewer": request.user}).data
         return Response(body, status=status.HTTP_201_CREATED)
 
 
 class AttachmentsView(APIView):
     permission_classes = [IsAnyUser]
+    rate_limits = {"POST": ratelimit.UPLOAD}
 
     @extend_schema(
         tags=TAG,
@@ -82,6 +88,7 @@ class AttachmentsView(APIView):
     )
     def get(self, request, request_id):
         req = services.visible_request(request.user, request_id)
+        access.record(request.user, req)
         rows = req.attachments.order_by("created_at", "id")
         return Response(serializers.AttachmentOut(rows, many=True).data)
 
@@ -110,6 +117,7 @@ class AttachmentsView(APIView):
 
         def create():
             attachment = services.start_upload(request.user, request_id, data, request)
+            access.record(request.user, attachment.request, AccessKind.UPDATE)
             upload = {
                 "method": "PUT",
                 "url": storage.upload_url(
@@ -137,6 +145,7 @@ class AttachmentView(APIView):
     )
     def get(self, request, attachment_id):
         attachment = services.visible_attachment(request.user, attachment_id)
+        access.record(request.user, attachment.request)
         return Response(serializers.AttachmentOut(attachment).data)
 
 
@@ -171,4 +180,5 @@ class AttachmentDownloadView(APIView):
     def get(self, request, attachment_id):
         attachment = services.visible_attachment(request.user, attachment_id)
         url = services.download(request.user, attachment)
+        access.record(request.user, attachment.request, AccessKind.DOWNLOAD)
         return Response({"url": url, "expires_at": timezone.now() + storage.DOWNLOAD_TTL})

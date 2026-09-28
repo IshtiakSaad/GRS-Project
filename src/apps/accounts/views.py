@@ -9,6 +9,7 @@ from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.common import ratelimit
 from apps.common.errors import AppError
 from apps.common.phone import normalise_phone
 from apps.common.schema import errors
@@ -60,6 +61,8 @@ class PublicView(APIView):
 
 
 class RegisterView(PublicView):
+    rate_limits = {"POST": ratelimit.REGISTER}
+
     @extend_schema(
         tags=TAG,
         request=serializers.RegisterIn,
@@ -74,6 +77,8 @@ class RegisterView(PublicView):
 
 
 class VerifyPhoneView(PublicView):
+    rate_limits = {"POST": ratelimit.CODE_CHECK}
+
     @extend_schema(
         tags=TAG,
         request=serializers.PhoneCodeIn,
@@ -89,6 +94,8 @@ class VerifyPhoneView(PublicView):
 
 
 class ResendCodeView(PublicView):
+    rate_limits = {"POST": ratelimit.CODE_SEND}
+
     @extend_schema(
         tags=TAG,
         request=serializers.PhoneIn,
@@ -103,6 +110,8 @@ class ResendCodeView(PublicView):
 
 
 class LoginView(PublicView):
+    rate_limits = {"POST": ratelimit.LOGIN}
+
     @extend_schema(
         tags=TAG,
         request=serializers.LoginIn,
@@ -197,6 +206,8 @@ class LogoutView(APIView):
 
 
 class PasswordResetRequestView(PublicView):
+    rate_limits = {"POST": ratelimit.CODE_SEND}
+
     @extend_schema(
         tags=TAG,
         request=serializers.PhoneIn,
@@ -209,6 +220,8 @@ class PasswordResetRequestView(PublicView):
 
 
 class PasswordResetConfirmView(PublicView):
+    rate_limits = {"POST": ratelimit.CODE_CHECK}
+
     @extend_schema(
         tags=TAG,
         request=serializers.ResetConfirmIn,

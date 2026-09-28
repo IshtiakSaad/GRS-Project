@@ -122,7 +122,7 @@ def queue(officer: User):
     ).order_by("-priority", "due_at", "submitted_at", "id")
 
 
-def by_tracking_no(user: User, raw: str) -> ServiceRequest:
+def _tracking_no(raw: str) -> str:
     number = tracking.parse_tracking_no(raw)
     if number is None:
         raise AppError(
@@ -130,7 +130,19 @@ def by_tracking_no(user: User, raw: str) -> ServiceRequest:
             _("This tracking number is not valid. Check it and try again."),
             400,
         )
-    request = transitions.visible_to(user).filter(tracking_no=number).first()
+    return number
+
+
+def by_tracking_no(user: User, raw: str) -> ServiceRequest:
+    request = transitions.visible_to(user).filter(tracking_no=_tracking_no(raw)).first()
     if request is None:
+        raise Http404
+    return request
+
+
+def by_tracking_no_anywhere(raw: str) -> ServiceRequest:
+    """For break-glass only: any submitted request, whatever the caller's scope."""
+    request = ServiceRequest.objects.filter(tracking_no=_tracking_no(raw)).first()
+    if request is None:  # drafts have no tracking number, so they are never found
         raise Http404
     return request
