@@ -1,0 +1,5 @@
+# Normalise line endings; shell scripts and Docker files must stay LF
+* text=auto eol=lf
+*.bat text eol=crlf
+*.png binary
+*.jpg binary
