@@ -19,6 +19,9 @@ release() {
   echo "== building $BUILD_SHA"
   $COMPOSE build -q
   $COMPOSE up -d --remove-orphans
+  # Nginx renders its config from the template only at start, and Compose does not recreate
+  # it when just a mounted file changed: restart it so config changes in this release apply.
+  $COMPOSE restart nginx
 }
 
 healthy() {
