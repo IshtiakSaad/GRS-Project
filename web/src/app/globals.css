@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eef8f3;
+  --color-brand-100: #d5eee2;
+  --color-brand-600: #00704f;
+  --color-brand-700: #005c41;
+  --color-brand-800: #004a35;
+  --color-accent-600: #d3263a;
+  --font-sans: var(--font-inter), var(--font-bangla), ui-sans-serif, system-ui, sans-serif;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #f6f7f8;
+  color: #1c2127;
+}
+
+/* Keyboard focus is always visible. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+}

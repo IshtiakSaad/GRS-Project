@@ -4,7 +4,7 @@ One Django codebase, run as several processes with different jobs, around one Po
 
 ```mermaid
 flowchart LR
-  phone([Citizen / officer / admin]) -->|HTTPS| nginx[Nginx<br/>TLS, buffering,<br/>per-address limits]
+  phone([Citizen / officer / admin]) -->|HTTPS| nginx[Nginx<br/>TLS, buffering,<br/>per-address limits,<br/>web app files]
   nginx -->|password routes| auth[api-auth<br/>gunicorn pool]
   nginx -->|everything else| api[api<br/>gunicorn pool]
   phone -.->|signed upload / download| files[(Object storage<br/>SeaweedFS, S3 API)]
@@ -30,7 +30,7 @@ flowchart LR
 
 | Process | Job | If it stops |
 |---|---|---|
-| `nginx` | TLS, buffers slow clients, per-address rate limits, routes password hashing to `api-auth` | Site down |
+| `nginx` | TLS, buffers slow clients, per-address rate limits, routes password hashing to `api-auth`, serves the web app (static files built from `web/`) | Site down |
 | `api` | Every endpoint except password hashing | Site down (Nginx answers 502) |
 | `api-auth` | Login, register, password set/reset, two-step verify | Logins fail; logged-in users unaffected |
 | `worker` | Sends notifications, verifies uploads, recomputes deadlines | Work waits in PostgreSQL; nothing is lost |

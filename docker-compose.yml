@@ -152,8 +152,13 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  # Edge proxy for the API, and the web app's static files (built from web/).
   nginx:
-    image: nginx:1.30-alpine
+    build:
+      context: ./web
+      args:
+        NEXT_PUBLIC_DEMO: ${DEMO_MODE:-false}
+    image: grs-nginx:local
     volumes:
       - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/grs:/etc/nginx/grs:ro

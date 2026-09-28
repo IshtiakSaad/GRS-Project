@@ -31,6 +31,8 @@ server {
     # HSTS here comes from Django (SECURE_HSTS_SECONDS); adding it again would send it twice.
     add_header X-Demo "Public demo: synthetic data only, reset every night" always;
 
+    # Where the browser uploads attachments (S3_PUBLIC_ENDPOINT): allowed in the page's CSP.
+    set $files_origin https://files.${GRS_DOMAIN};
     include /etc/nginx/grs/api.conf;
 }
 
@@ -53,7 +55,21 @@ server {
     proxy_read_timeout 60s;
     proxy_send_timeout 60s;
 
+    # The web app on ${GRS_DOMAIN} uploads here directly (a presigned PUT), so the browser
+    # asks first. Only that one origin may; the signature still decides what is accepted.
     location / {
+        if ($request_method = OPTIONS) {
+            add_header Access-Control-Allow-Origin "https://${GRS_DOMAIN}" always;
+            add_header Access-Control-Allow-Methods "PUT, GET" always;
+            add_header Access-Control-Allow-Headers "Content-Type" always;
+            add_header Access-Control-Max-Age 3600 always;
+            add_header Vary Origin always;
+            return 204;
+        }
+        proxy_hide_header Access-Control-Allow-Origin;
+        add_header Access-Control-Allow-Origin "https://${GRS_DOMAIN}" always;
+        add_header Vary Origin always;
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         set $storage http://storage:8333;
         proxy_pass $storage;
         limit_req zone=per_ip burst=50 nodelay;
