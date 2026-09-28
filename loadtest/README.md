@@ -54,4 +54,27 @@ Rerun, same outage, on a laptop rehearsal of the production stack:
 | Failed submissions | – | **0 of 401** |
 | Notifications delivered after restart | all | **401 of 401**, within 65 s |
 
-The results from the live server are in the main README.
+## Results on the live server (28 Sep 2026)
+
+AWS `m7i-flex.large` (2 vCPU, 8 GB), Mumbai. k6 ran on the same machine, sharing its two CPUs with the application, so these numbers are conservative.
+
+**Storm.** The full storm is about twice what this machine can serve. It degraded by slowing down, not by failing:
+
+| Load | Throughput | Browse p50 / p95 | Submit p50 / p95 | Login p50 / p95 | Errors |
+|---|---|---|---|---|---|
+| Full storm (`SCALE=1`) | 86 req/s (saturated; k6 dropped 3,214 planned iterations) | 2.9 s / 8.0 s | 3.0 s / 8.5 s | 7.6 s / 11.1 s | **0 of 9,763** |
+| Half storm (`SCALE=0.5`) | 72 req/s | 15 ms / 0.86 s | 41 ms / 0.96 s | 58 ms / 1.47 s | **0 of 7,775** |
+
+Capacity is about 70–85 requests a second on two vCPUs. The design scales out rather than up: more `api` replicas behind the same Nginx and a larger database host (see the architecture notes).
+
+**Broker outage** (30 s, 4 submissions/s):
+
+| | Result |
+|---|---|
+| Submit p95 while the broker was down | **32 ms** (worst 62 ms) |
+| Failed submissions | **0 of 401** |
+| Notifications delivered after restart | **401 of 401**, within 30 s |
+
+**Edge limit** (from Dhaka over the internet, 60 logins/s from one address for 10 s): 138 reached the application (10/s plus the burst of 40) and 462 were refused at Nginx with the API's JSON `RATE_LIMITED` body and `Retry-After`.
+
+**Backup and restore.** A backup taken right after the load tests restored with identical counts (1,219 requests, 4,887 audit rows, 909 users), and the restored audit chain verified all 4,887 rows.

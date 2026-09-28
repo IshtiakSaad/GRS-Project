@@ -19,4 +19,5 @@ $COMPOSE up -d --wait postgres storage redis-broker redis-cache mailpit
 $COMPOSE run --rm migrate
 $COMPOSE run --rm --no-deps api python manage.py seed_demo
 $COMPOSE up -d --wait   # report ok only once every service is healthy
+$COMPOSE restart nginx  # drop the old containers' addresses now, not after a few failed requests
 echo "$(date -u +%FT%TZ) demo reset ok"
