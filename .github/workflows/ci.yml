@@ -39,6 +39,10 @@ jobs:
       - run: cp .env.example .env
       - run: docker compose up -d --build --wait postgres redis-broker redis-cache
       - run: pip install --require-hashes -r requirements/dev.txt
+      - name: Compile translations
+        run: |
+          command -v msgfmt || { sudo apt-get update && sudo apt-get install -y gettext; }
+          find src/locale -name '*.po' -execdir msgfmt --check -o django.mo django.po \;
       - run: pytest --cov --cov-report=term-missing:skip-covered
         env:
           DATABASE_URL: postgres://grs_owner:owner-local@localhost:5432/grs

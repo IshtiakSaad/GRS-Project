@@ -9,6 +9,8 @@ SRC_DIR = Path(__file__).resolve().parent.parent.parent
 env = environ.Env()
 
 SECRET_KEY = env("DJANGO_SECRET_KEY")
+# Old keys stay here during a rotation so signed tokens issued before it keep working.
+SECRET_KEY_FALLBACKS = env.list("DJANGO_SECRET_KEY_FALLBACKS", default=[])
 DEBUG = False
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
 
@@ -112,10 +114,49 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = SRC_DIR.parent / "staticfiles"
 
+LOCALE_PATHS = [SRC_DIR / "locale"]
+
+# --- Identity -------------------------------------------------------------------------------
+# Argon2id at the OWASP minimum (m=19 MiB, t=2, p=1). Measured 23 ms per hash on one core
+# (tools/bench_password_hash.py); Django's default Argon2 costs 12x more for the same OWASP
+# rating, which the 9am login burst cannot afford. Only one hasher: there are no legacy hashes.
+PASSWORD_HASHERS = ["apps.accounts.hashers.Argon2idHasher"]
+AUTH_PASSWORD_VALIDATORS = [
+    # NIST 800-63B: a minimum length and a blocklist of common passwords, no composition rules.
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
+    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
+]
+PASSWORD_MAX_LENGTH = 128  # a longer input only costs hashing time
+
+# Access tokens: HS256, signed with the key named by JWT_ACTIVE_KID. Older keys stay listed
+# during a rotation so tokens already issued remain valid until they expire.
+JWT_SIGNING_KEYS = env.dict("JWT_SIGNING_KEYS")  # kid=secret,kid=secret
+JWT_ACTIVE_KID = env("JWT_ACTIVE_KID")
+JWT_ISSUER = "grs"
+ACCESS_TOKEN_SECONDS = 600
+
+# TOTP secrets are encrypted at rest (Fernet). The first key encrypts; all keys decrypt.
+FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS")
+
+# Demo mode accepts only the unassigned +880 10 prefix, so no real person can be messaged,
+# and exposes the fake SMS inbox. Never set on a system with real citizens.
+DEMO_MODE = env.bool("DEMO_MODE", default=False)
+SMS_BACKEND = env("SMS_BACKEND", default="fake")
+
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = env("EMAIL_HOST", default="mailpit")
+EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
+EMAIL_TIMEOUT = 10
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@grs.example.com")
+PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="http://localhost:8080")
+
 # --- API ------------------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
-    "DEFAULT_AUTHENTICATION_CLASSES": [],
+    "DEFAULT_AUTHENTICATION_CLASSES": ["apps.accounts.authentication.JWTAuthentication"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",

@@ -40,3 +40,6 @@ Thumbs.db
 /internal/
 gov-service-request-*.md
 *.pdf
+
+# Compiled translations: built from the .po files (Dockerfile, CI, make messages)
+*.mo

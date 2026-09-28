@@ -55,6 +55,8 @@ class User(AbstractBaseUser):
     token_version = models.PositiveIntegerField(default=0)
     totp_secret_encrypted = models.CharField(max_length=255, null=True, blank=True)
     totp_enabled_at = models.DateTimeField(null=True, blank=True)
+    # Time step of the last accepted TOTP code; that code and older ones are refused (replay).
+    totp_last_counter = models.BigIntegerField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
     created_at = created_at_field()
     updated_at = models.DateTimeField(auto_now=True)
@@ -144,6 +146,7 @@ class RefreshSession(models.Model):
     )
     device_id = models.CharField(max_length=64, null=True, blank=True)
     trust_mode = models.CharField(max_length=8, choices=TrustMode)
+    mfa = models.BooleanField(default=False)  # the login passed a second factor
     token_hash = models.CharField(max_length=64, unique=True)
     user_agent = models.CharField(max_length=255, blank=True, default="")
     rotated_at = models.DateTimeField(null=True, blank=True)
