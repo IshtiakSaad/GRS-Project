@@ -1,0 +1,55 @@
+# Production override, used with the base file:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# deploy/scripts/deploy.sh does this for you. Differences from local:
+# - prod settings come from .env (DJANGO_SETTINGS_MODULE=config.settings.prod)
+# - no database, Redis or storage port is published; only Nginx listens, on 80 and 443
+# - Nginx terminates TLS; certbot renews the certificate
+
+services:
+  postgres:
+    ports: !reset []
+    environment:
+      GRS_DEV_CREATEDB: "0"
+
+  redis-broker:
+    ports: !reset []
+
+  redis-cache:
+    ports: !reset []
+
+  storage:
+    ports: !reset []
+
+  mailpit:
+    ports: !reset []
+
+  nginx:
+    environment:
+      GRS_DOMAIN: ${GRS_DOMAIN:?set GRS_DOMAIN in .env}
+    volumes: !override
+      - ./deploy/nginx/grs:/etc/nginx/grs:ro
+      - ./deploy/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot-webroot:/var/www/certbot:ro
+    ports: !override
+      - "80:80"
+      - "443:443"
+    # Pick up renewed certificates: reload every 6 hours.
+    command: ["/bin/sh", "-c", "(while sleep 6h; do nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
+    depends_on:
+      storage:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  certbot:
+    image: certbot/certbot:v4.2.0
+    entrypoint: ["/bin/sh", "-c", "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done"]
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot-webroot:/var/www/certbot
+    restart: unless-stopped
+
+volumes:
+  letsencrypt:
+  certbot-webroot:

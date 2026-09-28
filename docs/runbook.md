@@ -85,3 +85,50 @@ authenticator (TOTP) link and ten recovery codes once; store the codes offline.
 | `DJANGO_SECRET_KEY` | Move the old value to `DJANGO_SECRET_KEY_FALLBACKS`, set the new one | SMS codes in flight (10 min) and the 60 s refresh retry window stop matching; device and email tokens keep working through the fallback. Recovery codes are unaffected (hashed with Argon2) |
 
 Production settings refuse to start with the placeholder keys from `.env.example`.
+
+## First deploy (one server)
+
+One Ubuntu 24.04 server (2 vCPU, 4 GB is enough for the demo), DNS pointing three names at it: `<domain>`, `files.<domain>`, `mail.<domain>`.
+
+```bash
+git clone https://github.com/IshtiakSaad/GRS-Project.git && cd GRS-Project
+sudo bash deploy/scripts/bootstrap-server.sh     # Docker, swap, firewall, SSH keys only, cron
+# log out and back in (docker group)
+deploy/scripts/gen-env.sh <domain> <email>       # .env with fresh random secrets, mode 600
+deploy/scripts/init-tls.sh                       # Let's Encrypt staging certificate first
+deploy/scripts/init-tls.sh --live                # then the real one
+deploy/scripts/deploy.sh                         # build, migrate, start, verify, roll back if not
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm --no-deps api \
+  python manage.py seed_demo                      # the public demo's synthetic data
+```
+
+Check: `https://<domain>/health/ready` answers `"status": "ok"` with the deployed commit as `build`.
+
+## Deploying a change
+
+```bash
+deploy/scripts/deploy.sh            # latest main
+deploy/scripts/deploy.sh v1.0.0     # a tag or commit
+```
+
+The script builds, runs migrations, restarts, and waits until `/health/ready` reports the new commit through Nginx and TLS. If it does not within two minutes, it redeploys the previous commit. A rollback moves code, not the schema, so migrations must stay additive: add columns and tables in one release, remove the old ones in a later one.
+
+## Backups
+
+Nightly at 02:00 Dhaka (cron from `bootstrap-server.sh`): `deploy/scripts/backup.sh` writes a `pg_dump` to `/var/backups/grs` and keeps 7 days, then `deploy/scripts/restore-check.sh` restores it into a scratch database, compares row counts and verifies the audit hash chain in the copy. Log: `/var/log/grs-backup.log`.
+
+**Restore for real** (the service is down anyway, or data was damaged):
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+$C stop api api-auth worker beat
+$C exec -T postgres psql -U postgres -c "DROP DATABASE grs" -c "CREATE DATABASE grs OWNER grs_owner"
+$C exec -T postgres pg_restore -U postgres -d grs --exit-on-error < /var/backups/grs/<file>.dump
+$C up -d && $C run --rm migrate python manage.py verify_audit
+```
+
+The backups sit on the same server: a lost disk loses them too. Copying them off the server (and continuous WAL archiving for point-in-time recovery) is on the roadmap.
+
+## Public demo reset
+
+Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database, stored files, queues and demo email, then migrates and reseeds. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.

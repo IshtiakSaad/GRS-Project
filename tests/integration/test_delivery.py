@@ -89,7 +89,7 @@ def test_a_broker_outage_does_not_fail_the_caller(monkeypatch, django_capture_on
     def broker_down(*args, **kwargs):
         raise ConnectionError("redis down")
 
-    monkeypatch.setattr(tasks.deliver, "delay", broker_down)
+    monkeypatch.setattr(tasks.deliver, "apply_async", broker_down)
     with django_capture_on_commit_callbacks(execute=True):
         n = _queued()
     assert Notification.objects.get(pk=n.pk).status == DeliveryStatus.PENDING  # kept for later

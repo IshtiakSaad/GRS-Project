@@ -91,6 +91,16 @@ def _empty_cache():
     cache.clear()
 
 
+@pytest.fixture(autouse=True)
+def _broker_breaker_closed():
+    """An outage simulated by one test must not leave enqueueing paused for the next."""
+    from apps.common import broker
+
+    broker.reset()
+    yield
+    broker.reset()
+
+
 # --- bulkhead guard ---------------------------------------------------------------------------
 # Every password hash computed while serving a request must be on a route that Nginx sends to
 # the api-auth bulkhead (design §12.4). The guard runs during every test; a new view that hashes
@@ -100,9 +110,9 @@ _serving_path: ContextVar[str | None] = ContextVar("serving_path", default=None)
 
 
 def bulkhead_routes() -> re.Pattern:
-    conf = (Path(__file__).parent.parent / "deploy/nginx/default.conf").read_text()
+    conf = (Path(__file__).parent.parent / "deploy/nginx/grs/api.conf").read_text()
     match = re.search(r"location ~ (\S+) \{\s*proxy_pass http://api_auth;", conf)
-    assert match, "api-auth location not found in deploy/nginx/default.conf"
+    assert match, "api-auth location not found in deploy/nginx/grs/api.conf"
     return re.compile(match.group(1))
 
 
