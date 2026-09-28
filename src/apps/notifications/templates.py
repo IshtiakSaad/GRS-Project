@@ -28,6 +28,35 @@ TEMPLATES = {
         "bn": "আপনার ইমেইল যাচাই করতে এই লিংকে যান (২৪ ঘণ্টা বৈধ):\n{link}\n\nকোড: {token}",
         "en": "To verify your email, open this link (valid 24 hours):\n{link}\n\nCode: {token}",
     },
+    # Requests: the tracking number and what happened, nothing else.
+    "request_submitted": {
+        "bn": "আবেদন জমা হয়েছে। ট্র্যাকিং নম্বর {tracking_no}।",
+        "en": "Request received. Tracking number {tracking_no}.",
+    },
+    "request_started": {
+        "bn": "আবেদন {tracking_no}: কাজ শুরু হয়েছে।",
+        "en": "Request {tracking_no}: work has started.",
+    },
+    "request_info_needed": {
+        "bn": "আবেদন {tracking_no}: আপনার কাছে তথ্য চাওয়া হয়েছে। লগইন করে উত্তর দিন।",
+        "en": "Request {tracking_no}: information is needed from you. Log in to reply.",
+    },
+    "request_resolved": {
+        "bn": "আবেদন {tracking_no}: নিষ্পত্তি হয়েছে। বিস্তারিত দেখতে লগইন করুন।",
+        "en": "Request {tracking_no}: resolved. Log in for details.",
+    },
+    "request_rejected": {
+        "bn": "আবেদন {tracking_no}: গ্রহণ করা হয়নি। কারণ দেখতে লগইন করুন।",
+        "en": "Request {tracking_no}: not accepted. Log in to see why.",
+    },
+    "request_assigned": {
+        "bn": "আবেদন {tracking_no} আপনাকে দেওয়া হয়েছে।",
+        "en": "Request {tracking_no} has been assigned to you.",
+    },
+    "request_withdrawn": {
+        "bn": "আবেদন {tracking_no} প্রত্যাহার করা হয়েছে।",
+        "en": "Request {tracking_no} was withdrawn.",
+    },
 }
 
 # Payloads of these templates hold a secret; it is erased once the message has gone out.

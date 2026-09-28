@@ -50,3 +50,63 @@ msgstr "একটি সমস্যা হয়েছে। আবার চ�
 
 msgid "Enter a Bangladeshi mobile number, for example 01712345678."
 msgstr "বাংলাদেশি মোবাইল নম্বর লিখুন, যেমন 01712345678।"
+
+msgid "A submitted request can no longer be edited or deleted."
+msgstr "জমা দেওয়া আবেদন আর সম্পাদনা বা মুছে ফেলা যায় না।"
+
+msgid "Choose a service from the list."
+msgstr "তালিকা থেকে একটি সেবা বেছে নিন।"
+
+msgid "Choose an active officer of this request's department."
+msgstr "এই আবেদনের বিভাগের একজন সক্রিয় কর্মকর্তা বেছে নিন।"
+
+msgid "Information was already requested twice. An administrator must review this."
+msgstr "ইতিমধ্যে দুইবার তথ্য চাওয়া হয়েছে। একজন প্রশাসককে বিষয়টি দেখতে হবে।"
+
+msgid "Reload the request and send its ETag as If-Match."
+msgstr "আবেদনটি আবার লোড করুন এবং এর ETag If-Match হিসেবে পাঠান।"
+
+msgid "Say why the request is urgent."
+msgstr "আবেদনটি কেন জরুরি তা লিখুন।"
+
+msgid "Send an Idempotency-Key header of 8 to 64 letters, digits, - or _."
+msgstr "৮ থেকে ৬৪ অক্ষরের (অক্ষর, সংখ্যা, - বা _) একটি Idempotency-Key হেডার পাঠান।"
+
+msgid "Someone else changed this request. Reload it and try again."
+msgstr "অন্য কেউ আবেদনটি পরিবর্তন করেছেন। আবার লোড করে চেষ্টা করুন।"
+
+msgid "Submit or delete some of your drafts first."
+msgstr "আগে আপনার কিছু খসড়া জমা দিন বা মুছে ফেলুন।"
+
+msgid "The request is already assigned to this officer."
+msgstr "আবেদনটি ইতিমধ্যে এই কর্মকর্তাকে দেওয়া আছে।"
+
+msgid "The time to reopen this request has passed."
+msgstr "এই আবেদন পুনরায় খোলার সময় পার হয়ে গেছে।"
+
+msgid "This Idempotency-Key was already used for a different request."
+msgstr "এই Idempotency-Key অন্য একটি অনুরোধে ব্যবহার করা হয়েছে।"
+
+msgid "This cannot be done while the request is in this state."
+msgstr "আবেদনের বর্তমান অবস্থায় এটি করা যায় না।"
+
+msgid "This request cannot be reopened again."
+msgstr "এই আবেদন আর পুনরায় খোলা যাবে না।"
+
+msgid "This service is no longer offered."
+msgstr "এই সেবাটি আর দেওয়া হয় না।"
+
+msgid "This tracking number is not valid. Check it and try again."
+msgstr "ট্র্যাকিং নম্বরটি সঠিক নয়। মিলিয়ে দেখে আবার চেষ্টা করুন।"
+
+msgid "Unknown status."
+msgstr "অজানা অবস্থা।"
+
+msgid "Verify your phone number to submit more than one request."
+msgstr "একাধিক আবেদন জমা দিতে আপনার ফোন নম্বর যাচাই করুন।"
+
+msgid "You are not allowed to do this with this request."
+msgstr "এই আবেদনে আপনি এটি করতে পারেন না।"
+
+msgid "You submitted the same request a few minutes ago."
+msgstr "কয়েক মিনিট আগে আপনি একই আবেদন জমা দিয়েছেন।"

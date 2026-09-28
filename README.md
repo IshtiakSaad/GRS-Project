@@ -21,6 +21,25 @@ docker compose up -d --build --wait
 | Readiness | http://localhost:8080/health/ready |
 | Outgoing email (Mailpit) | http://localhost:8025 |
 
+Load the demo data (synthetic; every phone number is on the unassigned `010` prefix):
+
+```bash
+docker compose run --rm --no-deps api python manage.py seed_demo
+```
+
+It creates three offices, five services, officers, citizens and requests in every state, and prints the demo password and the administrator's two-step login secret. Codes that the system would send by SMS are readable at `GET /api/v1/demo/sms/{phone}`, only while `DEMO_MODE` is on.
+
+A request's life, as a citizen and then an officer:
+
+| Step | Call |
+|---|---|
+| Log in | `POST /api/v1/auth/login` with `{"phone": "01000000101", "password": "…"}` |
+| Draft | `POST /api/v1/requests` with a `category` code from `GET /api/v1/categories` |
+| Submit | `POST /api/v1/requests/{id}/actions/submit` with an `Idempotency-Key` header |
+| Take the next request | `POST /api/v1/queue/claim-next` (officer) |
+| Work it | `POST /api/v1/requests/{id}/actions/start`, then `resolve` |
+| Track it | `GET /api/v1/requests/by-tracking/{number}`, Bangla digits accepted |
+
 Run the tests against the running stack:
 
 ```bash
