@@ -402,7 +402,7 @@ def apply(
         http_request=http_request,
     )
     for recipient, template, kind in change.notices:
-        notifications.queue(
+        notifications.notify(
             recipient,
             template,
             {"tracking_no": request.tracking_no},
