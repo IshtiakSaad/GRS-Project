@@ -26,7 +26,7 @@ Run the tests against the running stack:
 ```bash
 docker build --target test -t grs-app:test .
 docker run --rm --network grs-project_default \
-  -e DATABASE_URL=postgres://grs:grs@postgres:5432/grs \
+  -e DATABASE_URL=postgres://grs_owner:owner-local@postgres:5432/grs \
   -e REDIS_CACHE_URL=redis://redis-cache:6379/1 \
   -e REDIS_BROKER_URL=redis://redis-broker:6379/1 \
   grs-app:test
