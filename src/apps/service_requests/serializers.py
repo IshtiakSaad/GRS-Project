@@ -1,6 +1,7 @@
 """Request payloads. Three views of a request: the owner's, staff's, and the short list rows
 staff see (design §7.5: tracking number, category, status, priority, due date, initials)."""
 
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
 from apps.accounts.models import Role
@@ -141,6 +142,16 @@ class _Department(serializers.Serializer):
     name_en = serializers.CharField()
 
 
+class _HandledBy(serializers.Serializer):
+    role = serializers.CharField()
+    department = _Department()
+
+
+class _Officer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+
+
 class RequestOut(serializers.ModelSerializer):
     """The owner's view. The handling officer is shown as a role and office, never a name
     (design §7.5): decisions are the office's, and officers are not exposed to pressure."""
@@ -180,9 +191,11 @@ class RequestOut(serializers.ModelSerializer):
             "updated_at",
         ]
 
+    @extend_schema_field(_Beneficiary(allow_null=True))
     def get_beneficiary(self, obj):
         return _Beneficiary(obj).data if obj.beneficiary_name else None
 
+    @extend_schema_field(_HandledBy(allow_null=True))
     def get_handled_by(self, obj):
         if obj.assigned_officer_id is None:
             return None
@@ -198,6 +211,7 @@ class StaffRequestOut(RequestOut):
     class Meta(RequestOut.Meta):
         fields = [*RequestOut.Meta.fields, "owner", "assigned_officer", "reassignment_count"]
 
+    @extend_schema_field(_Officer(allow_null=True))
     def get_assigned_officer(self, obj):
         officer = obj.assigned_officer
         return {"id": officer.public_id, "name": officer.full_name} if officer else None
@@ -236,7 +250,7 @@ class StaffRowOut(serializers.ModelSerializer):
             "owner_initials",
         ]
 
-    def get_owner_initials(self, obj):
+    def get_owner_initials(self, obj) -> str:
         return "".join(f"{word[0]}." for word in obj.owner.full_name.split()[:3])
 
 

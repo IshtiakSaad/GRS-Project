@@ -2,7 +2,7 @@
 
 from django.http import Http404
 from django.utils.translation import gettext as _
-from drf_spectacular.utils import OpenApiParameter, extend_schema
+from drf_spectacular.utils import OpenApiParameter, PolymorphicProxySerializer, extend_schema
 from rest_framework import status
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from apps.accounts.permissions import IsAnyUser, IsOfficer, IsPublic
 from apps.common import idempotency
 from apps.common.errors import AppError
 from apps.common.pagination import KeysetPagination
+from apps.common.schema import errors
 from apps.directory.models import Category
 
 from . import serializers, services, transitions
@@ -30,6 +31,24 @@ IDEMPOTENCY_KEY = OpenApiParameter(
     OpenApiParameter.HEADER,
     description="Required for submit: 8 to 64 letters, digits, - or _. Reuse it on retries.",
 )
+ACTION = OpenApiParameter(
+    "action", str, OpenApiParameter.PATH, enum=list(serializers.ACTION_INPUTS)
+)
+ACTION_BODY = PolymorphicProxySerializer(
+    component_name="ActionIn",
+    serializers=list(dict.fromkeys(serializers.ACTION_INPUTS.values())),
+    resource_type_field_name=None,
+)
+ACTION_TABLE = "\n".join(
+    f"| `{name}` | `{s.__name__}` |" for name, s in serializers.ACTION_INPUTS.items()
+)
+# Codes shared by the draft endpoints that take If-Match.
+DRAFT_EDIT_ERRORS = {
+    "e404": ["NOT_FOUND"],
+    "e409": ["NOT_A_DRAFT"],
+    "e412": ["PRECONDITION_FAILED"],
+    "e428": ["PRECONDITION_REQUIRED"],
+}
 
 
 def _input(serializer_class, request, partial=False):
@@ -105,7 +124,10 @@ class RequestsView(APIView):
     @extend_schema(
         tags=TAG,
         parameters=[OpenApiParameter("status", str, enum=Status.values)],
-        responses={200: serializers.RequestRowOut(many=True)},
+        responses={
+            200: serializers.RequestRowOut(many=True),
+            **errors(e400=["VALIDATION_ERROR"]),
+        },
         description="Citizens see their own requests; staff see short rows of the requests in "
         "their scope and open one to see details.",
     )
@@ -122,7 +144,15 @@ class RequestsView(APIView):
         row = serializers.StaffRowOut if staff else serializers.RequestRowOut
         return paginator.get_paginated_response(row(page, many=True).data)
 
-    @extend_schema(tags=TAG, request=serializers.DraftIn, responses={201: serializers.RequestOut})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.DraftIn,
+        responses={
+            201: serializers.RequestOut,
+            **errors(e400=["VALIDATION_ERROR", "INVALID_CATEGORY"], e409=["TOO_MANY_DRAFTS"]),
+        },
+        description="Create a draft (citizens). Nothing is sent to the office until `submit`.",
+    )
     def post(self, request):
         if request.user.role != Role.CITIZEN:
             raise PermissionDenied  # assisted submission by officers is a later feature
@@ -133,7 +163,12 @@ class RequestsView(APIView):
 class RequestView(APIView):
     permission_classes = [IsAnyUser]
 
-    @extend_schema(tags=TAG, responses={200: serializers.StaffRequestOut, 304: None})
+    @extend_schema(
+        tags=TAG,
+        responses={200: serializers.StaffRequestOut, 304: None, **errors(e404=["NOT_FOUND"])},
+        description="Citizens get the owner's view (the office, not the officer's name); "
+        "staff also get the owner and assigned officer. Send If-None-Match for a 304.",
+    )
     def get(self, request, request_id):
         req = _with_related(transitions.visible_to(request.user)).filter(public_id=request_id)
         req = req.first()
@@ -147,7 +182,10 @@ class RequestView(APIView):
         tags=TAG,
         request=serializers.DraftIn,
         parameters=[IF_MATCH],
-        responses={200: serializers.RequestOut},
+        responses={
+            200: serializers.RequestOut,
+            **errors(**DRAFT_EDIT_ERRORS | {"e400": ["VALIDATION_ERROR", "INVALID_CATEGORY"]}),
+        },
         description="Edit a draft. Send only the fields that change.",
     )
     def patch(self, request, request_id):
@@ -155,7 +193,12 @@ class RequestView(APIView):
         draft = services.edit_draft(request.user, request_id, data, _if_match(request))
         return _detail(_reload(draft), request.user)
 
-    @extend_schema(tags=TAG, parameters=[IF_MATCH], responses={204: None})
+    @extend_schema(
+        tags=TAG,
+        parameters=[IF_MATCH],
+        responses={204: None, **errors(**DRAFT_EDIT_ERRORS)},
+        description="Discard a draft.",
+    )
     def delete(self, request, request_id):
         services.discard_draft(request.user, request_id, _if_match(request))
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -168,11 +211,31 @@ class RequestActionView(APIView):
 
     @extend_schema(
         tags=TAG,
-        parameters=[IDEMPOTENCY_KEY],
-        request=serializers.SubmitIn,
-        responses={200: serializers.StaffRequestOut},
-        description="Actions: " + ", ".join(serializers.ACTION_INPUTS) + ". The body depends "
-        "on the action. `submit` needs an Idempotency-Key header.",
+        parameters=[ACTION, IDEMPOTENCY_KEY],
+        request=ACTION_BODY,
+        responses={
+            200: serializers.StaffRequestOut,
+            **errors(
+                e400=["VALIDATION_ERROR", "IDEMPOTENCY_KEY_REQUIRED", "INVALID_OFFICER"],
+                e403=["NOT_ALLOWED", "PHONE_NOT_VERIFIED"],
+                e404=["NOT_FOUND"],
+                e409=[
+                    "INVALID_TRANSITION",
+                    "POSSIBLE_DUPLICATE",
+                    "CATEGORY_INACTIVE",
+                    "SAME_OFFICER",
+                    "INFO_REQUEST_LIMIT",
+                    "REOPEN_LIMIT",
+                    "REOPEN_WINDOW_CLOSED",
+                ],
+                e422=["IDEMPOTENCY_KEY_REUSED"],
+            ),
+        },
+        description="Every state change after the draft. The body depends on the action:\n\n"
+        "| Action | Body |\n|---|---|\n" + ACTION_TABLE + "\n\n"
+        "`submit` needs an `Idempotency-Key` header; a retry with the same key and body "
+        "returns the first answer with `Idempotent-Replayed: true`. After "
+        "`POSSIBLE_DUPLICATE`, send `confirm_duplicate: true` to submit anyway.",
     )
     def post(self, request, request_id, action):
         if action not in serializers.ACTION_INPUTS:
@@ -203,7 +266,18 @@ class RequestPriorityView(APIView):
         tags=TAG,
         request=serializers.PriorityIn,
         parameters=[IF_MATCH],
-        responses={200: serializers.StaffRequestOut},
+        responses={
+            200: serializers.StaffRequestOut,
+            **errors(
+                e400=["VALIDATION_ERROR"],
+                e403=["NOT_ALLOWED"],
+                e404=["NOT_FOUND"],
+                e409=["INVALID_TRANSITION"],
+                e412=["PRECONDITION_FAILED"],
+                e428=["PRECONDITION_REQUIRED"],
+            ),
+        },
+        description="Officers of the department and administrators, while the request is open.",
     )
     def patch(self, request, request_id):
         data = _input(serializers.PriorityIn, request)
@@ -223,8 +297,12 @@ class ByTrackingView(APIView):
 
     @extend_schema(
         tags=TAG,
-        responses={200: serializers.StaffRequestOut},
-        description="Accepts Bangla digits, spaces and missing dashes: ২৬ ০০০৪২১৩ ৭ works.",
+        responses={
+            200: serializers.StaffRequestOut,
+            **errors(e400=["INVALID_TRACKING_NO"], e404=["NOT_FOUND"]),
+        },
+        description="Accepts Bangla digits, spaces and missing dashes: ২৬ ০০০৪২১৩ ৭ works. "
+        "The check digit is verified before any lookup.",
     )
     def get(self, request, number):
         req = services.by_tracking_no(request.user, number)
@@ -235,7 +313,11 @@ class TimelineView(APIView):
     permission_classes = [IsAnyUser]
     pagination_class = None
 
-    @extend_schema(tags=TAG, responses={200: serializers.EventOut(many=True)})
+    @extend_schema(
+        tags=TAG,
+        responses={200: serializers.StaffEventOut(many=True), **errors(e404=["NOT_FOUND"])},
+        description="Citizens see public events without `actor` or `is_public`; staff see all.",
+    )
     def get(self, request, request_id):
         req = transitions.visible_to(request.user).filter(public_id=request_id).first()
         if req is None:
@@ -252,7 +334,12 @@ class TimelineView(APIView):
 class QueueView(APIView):
     permission_classes = [IsOfficer]
 
-    @extend_schema(tags=["queue"], responses={200: serializers.QueueOut})
+    @extend_schema(
+        tags=["queue"],
+        responses={200: serializers.QueueOut, **errors()},
+        description="The first 20 waiting requests of your department, in the order "
+        "claim-next takes them, and how many are waiting.",
+    )
     def get(self, request):
         waiting = services.queue(request.user)
         rows = waiting.select_related("category", "owner")[:QUEUE_PAGE]
@@ -270,7 +357,7 @@ class ClaimNextView(APIView):
     @extend_schema(
         tags=["queue"],
         request=None,
-        responses={200: serializers.StaffRequestOut, 204: None},
+        responses={200: serializers.StaffRequestOut, 204: None, **errors()},
         description="Take the most urgent waiting request of your department. 204 when the "
         "queue is empty.",
     )

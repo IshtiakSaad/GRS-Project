@@ -26,6 +26,7 @@ from .models import IdempotencyRecord
 
 TTL = timedelta(hours=24)
 KEY_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
+PURGE_BATCH = 5000
 
 Result = tuple[int, dict]
 
@@ -78,3 +79,22 @@ def once(user, key: str, fp: str, operation: Callable[[], Result]) -> tuple[int,
             response_status=status, response_body=stored
         )
         return status, stored, False
+
+
+def purge_expired() -> int:
+    """Delete records past the TTL, in short batches so no statement holds locks for long.
+
+    A stored response carries what the citizen wrote; once no retry can use it, it has no
+    reason to exist. Returns the number of rows deleted."""
+    total = 0
+    while True:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM idempotency_record WHERE id IN ("
+                "SELECT id FROM idempotency_record WHERE created_at < now() - %s LIMIT %s)",
+                [TTL, PURGE_BATCH],
+            )
+            deleted = cursor.rowcount
+        total += deleted
+        if deleted < PURGE_BATCH:
+            return total

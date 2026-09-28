@@ -8,6 +8,9 @@ from django.utils import timezone
 from apps.audit.models import AuditLog
 from apps.notifications.models import Kind, Notification
 from apps.service_requests.models import ServiceRequest, SlaPause, Status
+from apps.sla.calendar import due_at as sla_due_at
+from apps.sla.calendar import local_date
+from apps.sla.services import calendar_for
 from tests import factories
 
 from ..auth.helpers import error_code
@@ -36,18 +39,98 @@ def test_request_info_pauses_the_clock_and_asks_the_citizen(as_user):
     assert notice.expires_at is None  # the citizen must act; the message never expires
 
 
-def test_the_reply_ends_the_pause_and_moves_the_deadline(as_user):
-    c = cast()
+def _waited(c, *, clock_started_days_ago: int, paused_days_ago: int) -> ServiceRequest:
+    """Awaiting the citizen, with the clock and the open pause started that long ago, and
+    `due_at` still as it was before the pause (the pause is not counted until it ends)."""
     request = in_state(c, Status.AWAITING_CITIZEN)
-    SlaPause.objects.filter(request=request).update(started_at=timezone.now() - timedelta(days=3))
-    before = request.due_at
+    now = timezone.now()
+    started = now - timedelta(days=clock_started_days_ago)
+    ServiceRequest.objects.filter(pk=request.pk).update(
+        submitted_at=started, sla_started_at=started
+    )
+    request.refresh_from_db()
+    request.due_at = sla_due_at(_calendar(request), started, c.category.target_working_days)
+    request.save(update_fields=["due_at"])
+    SlaPause.objects.filter(request=request).update(
+        started_at=now - timedelta(days=paused_days_ago)
+    )
+    return request
 
-    act(as_user(c.owner), request, "respond", {"message": "Uploaded."})
+
+def _calendar(request):
+    return calendar_for(request.department_id, local_date(request.sla_started_at))
+
+
+def _expected_due(request, target: int) -> object:
+    pauses = SlaPause.objects.filter(
+        request=request, started_at__gte=request.sla_started_at, ended_at__isnull=False
+    ).values_list("started_at", "ended_at")
+    return sla_due_at(_calendar(request), request.sla_started_at, target, pauses)
+
+
+@pytest.mark.parametrize(
+    ("who", "action", "body"),
+    [
+        ("owner", "respond", {"message": "Uploaded."}),
+        ("assigned", "resume", {"reason": "Found it in the archive."}),
+    ],
+)
+def test_ending_the_pause_moves_the_deadline_by_the_working_days_paused(as_user, who, action, body):
+    c = cast()
+    # Any 7 x 24 h span holds exactly 5 working days of time (no holidays in the test data).
+    request = _waited(c, clock_started_days_ago=10, paused_days_ago=7)
+    target = c.category.target_working_days
+    unpaused = sla_due_at(_calendar(request), request.sla_started_at, target)
+    assert request.due_at == unpaused
+
+    assert act(as_user(c.by_name(who)), request, action, body).status_code == 200
 
     request.refresh_from_db()
-    pause = SlaPause.objects.get(request=request)
-    assert pause.ended_at is not None
-    assert request.due_at > before
+    assert SlaPause.objects.get(request=request).ended_at is not None
+    assert request.due_at == sla_due_at(_calendar(request), request.sla_started_at, target + 5)
+    assert request.due_at == _expected_due(request, target)
+
+
+def test_a_rejection_after_a_long_wait_is_not_flagged_late_for_the_paused_time(as_user):
+    c = cast()
+    # Without the pause the deadline passed 3 days ago; the citizen held it for 10 days.
+    request = _waited(c, clock_started_days_ago=12, paused_days_ago=10)
+    assert request.due_at < timezone.now()
+
+    body = {"reason_code": "INCOMPLETE", "note": "The form never came."}
+    assert act(as_user(c.assigned), request, "reject", body).status_code == 200
+
+    request.refresh_from_db()
+    assert request.due_at == _expected_due(request, c.category.target_working_days)
+    assert request.due_at > timezone.now()  # the stored deadline counts the pause
+    audit = AuditLog.objects.get(request=request, action="request.reject")
+    assert audit.data["late_rejection"] is False
+
+
+def test_withdrawing_while_paused_stores_a_deadline_that_counts_the_pause(as_user):
+    c = cast()
+    request = _waited(c, clock_started_days_ago=12, paused_days_ago=10)
+    act(as_user(c.owner), request, "withdraw", {})
+    request.refresh_from_db()
+    assert request.due_at == _expected_due(request, c.category.target_working_days)
+
+
+def test_a_reopened_request_does_not_carry_the_old_cycles_pauses(as_user):
+    c = cast()
+    request = in_state(c, Status.RESOLVED)
+    earlier = request.sla_started_at
+    SlaPause.objects.create(
+        request=request,
+        reason_code="OTHER",
+        started_at=earlier + timedelta(hours=1),
+        ended_at=earlier + timedelta(days=1),
+    )
+    act(as_user(c.owner), request, "reopen", {"reason": "Still misspelled."})
+    request.refresh_from_db()
+    assert request.sla_started_at > earlier
+    assert request.due_at == sla_due_at(
+        _calendar(request), request.sla_started_at, c.category.target_working_days
+    )
 
 
 def test_a_third_information_request_needs_an_administrator(as_user):

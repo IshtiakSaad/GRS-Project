@@ -8,6 +8,7 @@ class AccountsConfig(AppConfig):
 
     def ready(self):
         check_keys()
+        from . import schema  # noqa: F401 - registers the Bearer scheme with the API docs
 
 
 def check_keys() -> None:

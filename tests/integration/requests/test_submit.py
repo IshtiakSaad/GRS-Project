@@ -136,6 +136,32 @@ def test_a_key_expires_after_a_day(as_user):
     assert error_code(late) == "INVALID_TRANSITION"  # judged afresh: already submitted
 
 
+def test_expired_keys_are_purged_with_what_they_stored(as_user, settings):
+    from apps.common import idempotency
+    from apps.common.models import IdempotencyRecord
+
+    c = cast()
+    api = as_user(c.owner)
+    old, fresh = key(), key()
+    act(api, in_state(c, Status.DRAFT), "submit", HTTP_IDEMPOTENCY_KEY=old)
+    act(
+        api,
+        factories.draft(owner=c.owner, cat=c.category, title="Other"),
+        "submit",
+        HTTP_IDEMPOTENCY_KEY=fresh,
+    )
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "UPDATE idempotency_record SET created_at = now() - interval '25 hours' WHERE key = %s",
+            [old],
+        )
+
+    assert idempotency.purge_expired() == 1
+    assert list(IdempotencyRecord.objects.values_list("key", flat=True)) == [fresh]
+    schedule = settings.CELERY_BEAT_SCHEDULE["purge-idempotency-records"]
+    assert schedule["task"] == "apps.common.tasks.purge_idempotency_records"
+
+
 @pytest.mark.parametrize("header", [None, "short", "has space in it", "x" * 65])
 def test_submit_needs_a_well_formed_key(as_user, header):
     c = cast()
