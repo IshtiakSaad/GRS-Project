@@ -1,14 +1,14 @@
 # Government Service Request Management System
 
-A backend where citizens file service requests with government offices, officers work through them in order, and administrators run the whole thing. Built for people on cheap phones and slow connections, and for offices where accountability matters.
+A system where citizens file service requests with government offices, officers work through them in order, and administrators run the whole thing. Built for people on cheap phones and slow connections, and for offices where accountability matters.
 
-**Live demo: https://grs.root-access.xyz/api/docs/** (Swagger UI, synthetic data, reset every night)
+**Live demo: https://grs.root-access.xyz** (web app, Bangla and English) · API: https://grs.root-access.xyz/api/docs/ (synthetic data, reset every night)
 
-Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Redis · Celery · Nginx · Docker Compose
+Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Redis · Celery · Nginx · Docker Compose · Next.js (static export) · Playwright
 
 | | |
 |---|---|
-| Tests | 1,044 (unit, integration against real PostgreSQL, meta-tests), 97% coverage, run in CI on every push |
+| Tests | 1,044 (unit, integration against real PostgreSQL, meta-tests), 97% coverage; Playwright end-to-end through all three roles on a phone-sized browser. All run in CI on every push |
 | Live checks | k6 load test, broker-outage chaos run, edge rate-limit check, backup restore: [results](#results-from-the-live-server) |
 | Docs | [Architecture](docs/architecture.md) · [Decisions](docs/decisions/) · [Runbook](docs/runbook.md) · [Load tests](loadtest/README.md) |
 
@@ -18,7 +18,9 @@ Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Re
 
 ### On the live demo
 
-Open https://grs.root-access.xyz/api/docs/, call `POST /api/v1/auth/login`, copy `access` from the response, click **Authorize** and paste it.
+Open https://grs.root-access.xyz and log in with an account below. Codes sent "by SMS" appear in the **Demo SMS inbox** linked at the top of every page.
+
+For the API, open https://grs.root-access.xyz/api/docs/, call `POST /api/v1/auth/login`, copy `access` from the response, click **Authorize** and paste it.
 
 | Role | Phone | Password |
 |---|---|---|
@@ -40,11 +42,14 @@ docker compose run --rm --no-deps api python manage.py seed_demo
 
 | What | Where |
 |---|---|
+| Web app | http://localhost:8080 |
 | API docs | http://localhost:8080/api/docs/ |
 | Health | http://localhost:8080/health/ready |
 | Email inbox (Mailpit) | http://localhost:8025 |
 
 `seed_demo` prints the demo password and the administrator's two-step secret (add it to any authenticator app).
+
+To work on the web app with hot reload, run `npm ci && npm run dev` in `web/` (http://localhost:3000; it proxies `/api` to the stack on :8080). The end-to-end tests run against the stack: `E2E_ADMIN_TOTP_SECRET=<secret from seed_demo> npx playwright test`.
 
 Run the tests against the running stack:
 
@@ -112,7 +117,7 @@ docker run --rm --network grs-project_default \
 | Email notifications and email verification | Verification link by email; request updates by email once verified (Mailpit in the demo) |
 | Audit logs | Append-only (trigger + grants), hash-chained every minute, anchors copied to object storage; a separate log of which staff opened which request, visible to the citizen |
 | Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
-| Frontend UI with live link | **Not built.** The live link is the Swagger UI. A frontend is the first roadmap item |
+| Frontend UI with live link | https://grs.root-access.xyz: 19 screens for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves; no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
 
 ---
 
@@ -153,7 +158,7 @@ The chaos run found a real problem first: with the broker down, each submission 
 
 | Roadmap | Status today |
 |---|---|
-| Frontend for low-end Android phones | Not started; the API covers every screen |
+| Offline drafts and a lighter first load for 2G | The web app works on phones; drafts need a connection |
 | Assisted submission (an officer files for a citizen, who confirms) | Schema, constraints and anomaly indexes exist; the endpoint refuses it for now |
 | Real virus scanning (ClamAV) and image re-encoding | Scanner interface in place; the demo detects the EICAR test file |
 | Write-once audit anchors on a separate host | Anchors are copied to object storage on the same host |
@@ -170,6 +175,7 @@ The chaos run found a real problem first: with the broker down, each submission 
 src/apps/        accounts · service_requests · sla · collab · notifications · audit · admin_api · directory · common
 tests/           unit · integration (real PostgreSQL) · meta (routes, migrations)
 deploy/          nginx · postgres · gunicorn · scripts (bootstrap, deploy, backup, restore check, demo reset)
+web/             Next.js app (static export) · e2e (Playwright)
 loadtest/        k6 storm, chaos run, edge check
 docs/            architecture · decisions · runbook
 ```

@@ -1,0 +1,8 @@
+# The API image copies only what it names; this keeps the build context small.
+.git
+.env
+web
+loadtest
+**/__pycache__
+.ruff_cache
+.pytest_cache

@@ -12,3 +12,4 @@ Short records of the choices that shape the system: the context, what was decide
 | 6 | [The audit log is append-only and hash-chained](0006-hash-chained-audit-log.md) |
 | 7 | [Files go straight to object storage and are checked afterwards](0007-uploads-go-straight-to-storage.md) |
 | 8 | [One server with Docker Compose, not Kubernetes](0008-one-server-with-compose.md) |
+| 9 | [The web app is static files served by the same Nginx](0009-static-web-app.md) |
