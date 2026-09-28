@@ -1,0 +1,147 @@
+# Local profile: `docker compose up` on a laptop, no cloud accounts, plain HTTP on :8080.
+# Every service here maps to a requirement; see the README's "Why each tool" table.
+
+x-app: &app
+  build:
+    context: .
+    target: runtime
+    args:
+      BUILD_SHA: ${BUILD_SHA:-dev}
+  image: grs-app:local
+  env_file: .env
+  environment:
+    DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.local}
+  restart: unless-stopped
+  stop_grace_period: 45s
+  depends_on: &app-deps
+    postgres:
+      condition: service_healthy
+    redis-broker:
+      condition: service_started
+    redis-cache:
+      condition: service_started
+
+x-web-healthcheck: &web-healthcheck
+  test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=2)"]
+  interval: 10s
+  timeout: 3s
+  retries: 3
+  start_period: 15s
+
+services:
+  # Source of truth for everything.
+  postgres:
+    image: postgres:17.11-bookworm
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-grs}
+      POSTGRES_USER: ${POSTGRES_USER:-grs}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grs}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+  # Task queue. noeviction: a full broker must refuse writes, never silently drop a task.
+  # No persistence: the outbox in PostgreSQL is the durable copy.
+  redis-broker:
+    image: redis:8.6-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "noeviction", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    restart: unless-stopped
+
+  # Cache and rate-limit counters. allkeys-lru: under memory pressure, evict anything.
+  redis-cache:
+    image: redis:8.6-alpine
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    restart: unless-stopped
+
+  # Runs schema migrations once, before any app process starts.
+  migrate:
+    <<: *app
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    <<: *app
+    depends_on:
+      <<: *app-deps
+      migrate:
+        condition: service_completed_successfully
+    healthcheck: *web-healthcheck
+
+  # Password-hashing bulkhead: same image, own worker pool.
+  api-auth:
+    <<: *app
+    command: ["gunicorn", "--config", "deploy/gunicorn/auth.py", "config.wsgi:application"]
+    depends_on:
+      <<: *app-deps
+      migrate:
+        condition: service_completed_successfully
+    healthcheck: *web-healthcheck
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
+    depends_on:
+      <<: *app-deps
+      migrate:
+        condition: service_completed_successfully
+
+  beat:
+    <<: *app
+    command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    depends_on:
+      <<: *app-deps
+      migrate:
+        condition: service_completed_successfully
+
+  nginx:
+    image: nginx:1.30-alpine
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8080:80"
+    depends_on:
+      api:
+        condition: service_healthy
+      api-auth:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # S3-compatible object storage for attachments, self-hosted so files stay in-country.
+  storage:
+    image: chrislusf/seaweedfs:4.47
+    command: ["mini", "-dir=/data"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-grs-local}
+      AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-grs-local-secret}
+      S3_BUCKET: ${S3_BUCKET:-attachments}
+    volumes:
+      - storage:/data
+    ports:
+      - "127.0.0.1:8333:8333"
+    restart: unless-stopped
+
+  # Catches outgoing email locally; web inbox at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:8025:8025"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  storage:
