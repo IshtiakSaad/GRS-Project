@@ -1,0 +1,49 @@
+[project]
+name = "grs"
+version = "0.1.0"
+description = "Government Service Request Management System"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "django>=5.2,<5.3",
+    "djangorestframework>=3.16,<3.17",
+    "drf-spectacular>=0.28",
+    "django-environ>=0.12",
+    "psycopg[binary]>=3.2,<3.3",
+    "gunicorn>=23",
+    "celery[redis]>=5.5,<5.6",
+    "redis>=5.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3",
+    "pytest-django>=4.10",
+    "pytest-cov>=6.0",
+    "ruff>=0.11",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM"]
+ignore = ["S101"]  # assert is how pytest works
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]  # test passwords are fine
+"src/config/settings/*.py" = ["F405", "F403"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+pythonpath = ["src"]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "concurrency: tests that run parallel database sessions",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/migrations/*", "src/config/wsgi.py"]
