@@ -1,15 +1,15 @@
-"""Statistics with counter-metrics (design §5.6).
+"""Statistics, each shown beside the numbers that would reveal it being gamed.
 
-Any number that is published becomes a target, and a target gets gamed. So each primary metric
-comes with the numbers that would expose gaming it:
+A published number becomes a target. An office can look punctual by pausing the clock or
+rejecting instead of resolving, and look fast by closing requests that come straight back:
 
-| Primary                 | Counter-metrics                                                   |
+| Headline                | Shown beside it                                                   |
 |-------------------------|-------------------------------------------------------------------|
-| On-time resolution      | info-request rate, median paused time, rejection rate, late       |
-|                         | rejections (last 20% of the SLA window)                           |
-| Median time to resolve  | reopen rate after resolution, reopen rate after rejection         |
-| Throughput per officer  | reassignment rate                                                 |
-| Resolution rate         | withdrawn after the deadline passed                               |
+| Resolved on time        | how often info was asked for, typical time paused, how many were  |
+|                         | rejected, and how many of those were rejected close to the due date |
+| Typical days to resolve | how often resolved or rejected requests were reopened             |
+| Requests per officer    | how often requests were moved to someone else                     |
+| Share resolved          | how many citizens gave up and withdrew after the due date         |
 
 Counts are over requests submitted in the period (Asia/Dhaka dates), grouped by department,
 category or officer. One query; every aggregate runs over the same filtered set.
