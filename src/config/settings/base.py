@@ -99,7 +99,14 @@ CELERY_TASK_TIME_LIMIT = 120
 CELERY_TASK_SOFT_TIME_LIMIT = 100
 CELERY_WORKER_MAX_TASKS_PER_CHILD = 1000
 CELERY_TIMEZONE = "UTC"
-CELERY_BEAT_SCHEDULE: dict = {}
+CELERY_BEAT_SCHEDULE: dict = {
+    # Stored submit responses hold what citizens wrote; keep them only while a retry may
+    # need them (24 h).
+    "purge-idempotency-records": {
+        "task": "apps.common.tasks.purge_idempotency_records",
+        "schedule": 3600.0,
+    },
+}
 
 # --- Internationalisation -------------------------------------------------------------------
 # Timestamps are stored in UTC. Business dates (tracking-number year, working days, due dates)
@@ -175,6 +182,11 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
+    # Two choice sets share the field name `reason_code`; name each after what it means.
+    "ENUM_NAME_OVERRIDES": {
+        "PauseReasonEnum": "apps.service_requests.models.PauseReason",
+        "RejectionReasonEnum": "apps.service_requests.models.RejectionReason",
+    },
 }
 
 # --- Logging --------------------------------------------------------------------------------

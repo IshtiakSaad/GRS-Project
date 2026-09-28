@@ -11,6 +11,7 @@ from rest_framework.views import APIView
 
 from apps.common.errors import AppError
 from apps.common.phone import normalise_phone
+from apps.common.schema import errors
 from apps.notifications.models import DemoSms
 
 from . import otp, serializers, services, sessions
@@ -18,6 +19,14 @@ from .models import RefreshSession
 from .permissions import IsAnyUser, IsPublic, IsStaff
 
 TAG = ["auth"]
+INVALID_INPUT = errors(authenticated=False, e400=["VALIDATION_ERROR"])
+DELAYED = ["LOGIN_DELAYED"]
+SECOND_FACTOR_ERRORS = errors(
+    authenticated=False,
+    e400=["VALIDATION_ERROR", "INVALID_CODE"],
+    e401=["MFA_TOKEN_INVALID"],
+    e429=DELAYED,
+)
 
 
 def _input(serializer_class, request):
@@ -52,7 +61,10 @@ class PublicView(APIView):
 
 class RegisterView(PublicView):
     @extend_schema(
-        tags=TAG, request=serializers.RegisterIn, responses={202: serializers.AcceptedOut}
+        tags=TAG,
+        request=serializers.RegisterIn,
+        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+        description="The answer is the same whether or not the number already has an account.",
     )
     def post(self, request):
         data = _input(serializers.RegisterIn, request)
@@ -62,7 +74,14 @@ class RegisterView(PublicView):
 
 
 class VerifyPhoneView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.PhoneCodeIn, responses={204: None})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.PhoneCodeIn,
+        responses={
+            204: None,
+            **errors(authenticated=False, e400=["VALIDATION_ERROR", "INVALID_CODE"]),
+        },
+    )
     def post(self, request):
         data = _input(serializers.PhoneCodeIn, request)
         services.verify_phone(data["phone"], data["code"])
@@ -70,7 +89,11 @@ class VerifyPhoneView(PublicView):
 
 
 class ResendCodeView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.PhoneIn, responses={202: serializers.AcceptedOut})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.PhoneIn,
+        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+    )
     def post(self, request):
         services.resend_phone_code(_input(serializers.PhoneIn, request)["phone"])
         return _accepted()
@@ -80,7 +103,21 @@ class ResendCodeView(PublicView):
 
 
 class LoginView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.LoginIn, responses={200: serializers.LoginOut})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.LoginIn,
+        responses={
+            200: serializers.LoginOut,
+            **errors(
+                authenticated=False,
+                e400=["VALIDATION_ERROR"],
+                e401=["INVALID_CREDENTIALS"],
+                e429=DELAYED,
+            ),
+        },
+        description="Returns tokens, or, for accounts with two-step login, `mfa_token` to "
+        "exchange at /auth/2fa/verify. 429 carries Retry-After.",
+    )
     def post(self, request):
         data = _input(serializers.LoginIn, request)
         result = services.login(
@@ -98,7 +135,7 @@ class SecondFactorView(PublicView):
     @extend_schema(
         tags=TAG,
         request=serializers.SecondFactorIn,
-        responses={200: serializers.TokensOut},
+        responses={200: serializers.TokensOut, **SECOND_FACTOR_ERRORS},
         description="Second step of an administrator's (or opted-in officer's) login.",
     )
     def post(self, request):
@@ -112,7 +149,10 @@ class SecondFactorView(PublicView):
 
 class RecoveryCodeView(PublicView):
     @extend_schema(
-        tags=TAG, request=serializers.SecondFactorIn, responses={200: serializers.TokensOut}
+        tags=TAG,
+        request=serializers.SecondFactorIn,
+        responses={200: serializers.TokensOut, **SECOND_FACTOR_ERRORS},
+        description="Second step with a one-time recovery code instead of the authenticator.",
     )
     def post(self, request):
         data = _input(serializers.SecondFactorIn, request)
@@ -124,7 +164,15 @@ class RecoveryCodeView(PublicView):
 
 
 class RefreshView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.RefreshIn, responses={200: serializers.TokensOut})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.RefreshIn,
+        responses={
+            200: serializers.TokensOut,
+            **errors(authenticated=False, e400=["VALIDATION_ERROR"], e401=["SESSION_EXPIRED"]),
+        },
+        description="Rotates the refresh token. A retry within 60 s gets the same new token.",
+    )
     def post(self, request):
         raw = _input(serializers.RefreshIn, request)["refresh"]
         try:
@@ -139,7 +187,7 @@ class RefreshView(PublicView):
 class LogoutView(APIView):
     permission_classes = [IsAnyUser]
 
-    @extend_schema(tags=TAG, request=None, responses={204: None})
+    @extend_schema(tags=TAG, request=None, responses={204: None, **errors()})
     def post(self, request):
         services.logout(request.auth["sid"])
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -149,14 +197,26 @@ class LogoutView(APIView):
 
 
 class PasswordResetRequestView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.PhoneIn, responses={202: serializers.AcceptedOut})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.PhoneIn,
+        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+        description="Same answer for every number. Numbers unused for 180 days get no code.",
+    )
     def post(self, request):
         services.request_password_reset(_input(serializers.PhoneIn, request)["phone"])
         return _accepted()
 
 
 class PasswordResetConfirmView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.ResetConfirmIn, responses={204: None})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.ResetConfirmIn,
+        responses={
+            204: None,
+            **errors(authenticated=False, e400=["VALIDATION_ERROR", "INVALID_CODE"]),
+        },
+    )
     def post(self, request):
         data = _input(serializers.ResetConfirmIn, request)
         services.confirm_password_reset(
@@ -171,7 +231,11 @@ class PasswordResetConfirmView(PublicView):
 class TotpSetupView(APIView):
     permission_classes = [IsStaff]
 
-    @extend_schema(tags=TAG, request=None, responses={200: serializers.TotpSetupOut})
+    @extend_schema(
+        tags=TAG,
+        request=None,
+        responses={200: serializers.TotpSetupOut, **errors(e409=["TOTP_ALREADY_ENABLED"])},
+    )
     def post(self, request):
         return Response(services.begin_totp_setup(request.user))
 
@@ -180,7 +244,16 @@ class TotpConfirmView(APIView):
     permission_classes = [IsStaff]
 
     @extend_schema(
-        tags=TAG, request=serializers.TotpConfirmIn, responses={200: serializers.TotpConfirmOut}
+        tags=TAG,
+        request=serializers.TotpConfirmIn,
+        responses={
+            200: serializers.TotpConfirmOut,
+            **errors(
+                e400=["VALIDATION_ERROR", "INVALID_CREDENTIALS", "INVALID_CODE"],
+                e409=["TOTP_ALREADY_ENABLED"],
+                e429=DELAYED,
+            ),
+        },
     )
     def post(self, request):
         data = _input(serializers.TotpConfirmIn, request)
@@ -199,7 +272,14 @@ class TotpConfirmView(APIView):
 
 
 class EmailVerifyView(PublicView):
-    @extend_schema(tags=TAG, request=serializers.EmailTokenIn, responses={204: None})
+    @extend_schema(
+        tags=TAG,
+        request=serializers.EmailTokenIn,
+        responses={
+            204: None,
+            **errors(authenticated=False, e400=["VALIDATION_ERROR", "INVALID_CODE"]),
+        },
+    )
     def post(self, request):
         services.verify_email(_input(serializers.EmailTokenIn, request)["token"])
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -211,11 +291,19 @@ class EmailVerifyView(PublicView):
 class MeView(APIView):
     permission_classes = [IsAnyUser]
 
-    @extend_schema(tags=["me"], responses={200: serializers.MeOut})
+    @extend_schema(tags=["me"], responses={200: serializers.MeOut, **errors()})
     def get(self, request):
         return Response(serializers.MeOut(request.user).data)
 
-    @extend_schema(tags=["me"], request=serializers.MeIn, responses={200: serializers.MeOut})
+    @extend_schema(
+        tags=["me"],
+        request=serializers.MeIn,
+        responses={
+            200: serializers.MeOut,
+            **errors(e400=["VALIDATION_ERROR"], e409=["EMAIL_IN_USE"]),
+        },
+        description="A new email is unverified until the emailed link is used.",
+    )
     def patch(self, request):
         s = serializers.MeIn(data=request.data, partial=True)
         s.is_valid(raise_exception=True)
@@ -235,7 +323,13 @@ class MyPasswordView(APIView):
     permission_classes = [IsAnyUser]
 
     @extend_schema(
-        tags=["me"], request=serializers.ChangePasswordIn, responses={200: serializers.TokensOut}
+        tags=["me"],
+        request=serializers.ChangePasswordIn,
+        responses={
+            200: serializers.TokensOut,
+            **errors(e400=["VALIDATION_ERROR", "INVALID_CREDENTIALS"], e429=DELAYED),
+        },
+        description="Ends every session and returns new tokens for this one.",
     )
     def post(self, request):
         data = _input(serializers.ChangePasswordIn, request)
@@ -255,7 +349,7 @@ class MySessionsView(APIView):
     permission_classes = [IsAnyUser]
     pagination_class = None
 
-    @extend_schema(tags=["me"], responses={200: serializers.SessionOut(many=True)})
+    @extend_schema(tags=["me"], responses={200: serializers.SessionOut(many=True), **errors()})
     def get(self, request):
         rows = sessions.active_sessions(request.user)
         context = {"sid": request.auth["sid"]}
@@ -265,7 +359,7 @@ class MySessionsView(APIView):
 class MySessionView(APIView):
     permission_classes = [IsAnyUser]
 
-    @extend_schema(tags=["me"], responses={204: None})
+    @extend_schema(tags=["me"], responses={204: None, **errors(e404=["NOT_FOUND"])})
     def delete(self, request, session_id):
         if not RefreshSession.objects.filter(
             user=request.user, family_id=session_id, revoked_at__isnull=True
@@ -281,7 +375,15 @@ class MySessionView(APIView):
 class DemoSmsView(PublicView):
     """What the fake SMS provider "sent" to a demo number. Absent unless DEMO_MODE is on."""
 
-    @extend_schema(tags=["demo"], responses={200: serializers.DemoSmsOut(many=True)})
+    @extend_schema(
+        tags=["demo"],
+        responses={
+            200: serializers.DemoSmsOut(many=True),
+            **errors(authenticated=False, e404=["NOT_FOUND"]),
+        },
+        description="Demo only: the last 10 messages the fake SMS provider stored for a "
+        "+880 10… number. Not found outside demo mode.",
+    )
     def get(self, request, phone):
         number = normalise_phone(phone)
         if not settings.DEMO_MODE or number is None:

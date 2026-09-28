@@ -369,15 +369,17 @@ def apply(
         )
 
     before = request.status
-    ctx = Context(user=user, now=_db_now(), data=data)
-    change = HANDLERS[action](request, ctx)
     after = rule.target or before
+    ctx = Context(user=user, now=_db_now(), data=data)
 
+    # Leaving AWAITING_CITIZEN ends the pause, whatever comes next. The deadline is recomputed
+    # before the handler runs, so a handler that reads it (reject's late-rejection check) and
+    # the stored deadline of a closed request both count the pause that just ended.
     if before == Status.AWAITING_CITIZEN and after != Status.AWAITING_CITIZEN:
         SlaPause.objects.filter(request=request, ended_at__isnull=True).update(ended_at=ctx.now)
-        if after in OPEN_STATUSES:
-            request.due_at = compute_due_at(request)  # the pause moved the deadline
+        request.due_at = compute_due_at(request)
 
+    change = HANDLERS[action](request, ctx)
     request.status = after
     request.version += 1
     request.save()
