@@ -12,8 +12,8 @@ TEMPLATES = {
     },
     "register_attempt": {
         "bn": "আপনার নম্বরে নিবন্ধনের চেষ্টা হয়েছে। আপনি হলে লগইন করুন বা পাসওয়ার্ড রিসেট করুন।",
-        "en": "Someone tried to register with your number. If this was you, log in or reset "
-        "your password.",
+        "en": "A new account was attempted on your number. You already have one: log in, or "
+        "reset your password.",
     },
     "password_changed": {
         "bn": "আপনার পাসওয়ার্ড পরিবর্তন হয়েছে। আপনি না করলে হেল্প ডেস্কে যোগাযোগ করুন।",
