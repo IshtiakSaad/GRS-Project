@@ -3,7 +3,11 @@
 import os
 
 os.environ.setdefault("DJANGO_SECRET_KEY", "test-only-not-secret")
-os.environ.setdefault("DATABASE_URL", "postgres://grs:grs@localhost:5432/grs")
+# Tests migrate and run as grs_owner, exactly like production migrations; role-specific tests
+# connect separately as grs_api and grs_worker.
+os.environ.setdefault("DATABASE_URL", "postgres://grs_owner:owner-local@localhost:5432/grs")
+os.environ.setdefault("GRS_API_PASSWORD", "api-local")
+os.environ.setdefault("GRS_WORKER_PASSWORD", "worker-local")
 os.environ.setdefault("REDIS_CACHE_URL", "redis://localhost:6380/0")
 os.environ.setdefault("REDIS_BROKER_URL", "redis://localhost:6379/0")
 

@@ -18,11 +18,20 @@ BUILD_SHA = env("BUILD_SHA", default="dev")
 INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
+    "django.contrib.postgres",
     "django.contrib.staticfiles",
     "rest_framework",
     "drf_spectacular",
     "apps.common",
+    "apps.accounts",
+    "apps.directory",
+    "apps.service_requests",
+    "apps.collab",
+    "apps.notifications",
+    "apps.audit",
 ]
+
+AUTH_USER_MODEL = "accounts.User"
 
 MIDDLEWARE = [
     "apps.common.middleware.RequestIdMiddleware",
@@ -44,19 +53,13 @@ TEMPLATES = [
 ]
 
 # --- Database -------------------------------------------------------------------------------
-# PostgreSQL is the only source of truth. The statement timeout sits at the bottom of the
-# timeout ladder (statement < gunicorn < nginx) so a slow query fails before the worker is killed.
+# PostgreSQL is the only source of truth. Each service connects as its own role, and the
+# statement, lock and idle-in-transaction timeouts are set on those roles
+# (deploy/postgres/roles.sql), so the database enforces them whatever the client does.
 DATABASES = {"default": env.db("DATABASE_URL")}
 DATABASES["default"]["CONN_MAX_AGE"] = env.int("DB_CONN_MAX_AGE", default=60)
 DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
-DATABASES["default"]["OPTIONS"] = {
-    "connect_timeout": 3,
-    "options": (
-        f"-c statement_timeout={env.int('DB_STATEMENT_TIMEOUT_MS', default=5000)}"
-        f" -c idle_in_transaction_session_timeout="
-        f"{env.int('DB_IDLE_IN_TX_TIMEOUT_MS', default=10000)}"
-    ),
-}
+DATABASES["default"]["OPTIONS"] = {"connect_timeout": 3}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # --- Redis ----------------------------------------------------------------------------------

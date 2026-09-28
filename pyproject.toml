@@ -29,11 +29,17 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "DJ", "S", "SIM"]
-ignore = ["S101"]  # assert is how pytest works
+ignore = [
+    "S101",   # assert is how pytest works
+    "DJ001",  # nullable text is deliberate: CHECK constraints rely on SQL NULL meaning "absent"
+    "DJ008",  # no Django admin; models are not rendered as strings
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S105", "S106"]  # test passwords are fine
+# Tests: fixed passwords, SQL built from fixed table names, seeded (reproducible) randomness.
+"tests/**" = ["S105", "S106", "S107", "S311", "S608"]
 "src/config/settings/*.py" = ["F405", "F403"]
+"src/apps/*/migrations/*.py" = ["E501"]  # generated code and SQL text
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

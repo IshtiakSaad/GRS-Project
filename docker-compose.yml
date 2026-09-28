@@ -9,8 +9,9 @@ x-app: &app
       BUILD_SHA: ${BUILD_SHA:-dev}
   image: grs-app:local
   env_file: .env
-  environment:
+  environment: &app-env
     DJANGO_SETTINGS_MODULE: ${DJANGO_SETTINGS_MODULE:-config.settings.local}
+    DATABASE_URL: ${API_DATABASE_URL}
   restart: unless-stopped
   stop_grace_period: 45s
   depends_on: &app-deps
@@ -29,22 +30,56 @@ x-web-healthcheck: &web-healthcheck
   start_period: 15s
 
 services:
-  # Source of truth for everything.
+  # Source of truth for everything. Settings: deploy/postgres/conf.d/grs.conf.
   postgres:
-    image: postgres:17.11-bookworm
+    build: ./deploy/postgres
+    image: grs-postgres:17
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-grs}
-      POSTGRES_USER: ${POSTGRES_USER:-grs}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-grs}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      # Checksums detect silent disk corruption instead of serving corrupted rows.
+      POSTGRES_INITDB_ARGS: --data-checksums
+      GRS_OWNER_PASSWORD: ${GRS_OWNER_PASSWORD}
+      GRS_API_PASSWORD: ${GRS_API_PASSWORD}
+      GRS_WORKER_PASSWORD: ${GRS_WORKER_PASSWORD}
+      GRS_REPLICATOR_PASSWORD: ${GRS_REPLICATOR_PASSWORD}
+      GRS_DEV_CREATEDB: "1"  # local only: lets tests create their database as grs_owner
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/conf.d:/etc/postgresql/conf.d:ro
+      - ./deploy/postgres:/grs:ro
+      - ./deploy/postgres/initdb:/docker-entrypoint-initdb.d:ro
     ports:
       - "127.0.0.1:5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      # Over TCP: during first-start initialisation the server listens only on its socket, so a
+      # socket check would report ready before the roles exist.
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U grs_owner -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+    stop_grace_period: 60s
+
+  # Warm standby, streaming from the primary. Opt-in: docker compose --profile standby up -d
+  # Read-only; promotion is a manual step (docs/runbook.md).
+  postgres-standby:
+    profiles: ["standby"]
+    image: grs-postgres:17
+    command: ["bash", "/grs/standby.sh"]
+    environment:
+      PGDATA: /var/lib/postgresql/data
+      GRS_REPLICATOR_PASSWORD: ${GRS_REPLICATOR_PASSWORD}
+    volumes:
+      - pgdata-standby:/var/lib/postgresql/data
+      - ./deploy/postgres/conf.d:/etc/postgresql/conf.d:ro
+      - ./deploy/postgres:/grs:ro
+    ports:
+      - "127.0.0.1:5433:5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     stop_grace_period: 60s
 
@@ -68,6 +103,9 @@ services:
   # Runs schema migrations once, before any app process starts.
   migrate:
     <<: *app
+    environment:
+      <<: *app-env
+      DATABASE_URL: ${OWNER_DATABASE_URL}
     command: ["python", "manage.py", "migrate", "--noinput"]
     restart: "no"
     depends_on:
@@ -94,6 +132,9 @@ services:
 
   worker:
     <<: *app
+    environment:
+      <<: *app-env
+      DATABASE_URL: ${WORKER_DATABASE_URL}
     command: ["celery", "-A", "config", "worker", "--loglevel=INFO", "--concurrency=2"]
     depends_on:
       <<: *app-deps
@@ -102,6 +143,9 @@ services:
 
   beat:
     <<: *app
+    environment:
+      <<: *app-env
+      DATABASE_URL: ${WORKER_DATABASE_URL}
     command: ["celery", "-A", "config", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     depends_on:
       <<: *app-deps
@@ -144,4 +188,5 @@ services:
 
 volumes:
   pgdata:
+  pgdata-standby:
   storage:
