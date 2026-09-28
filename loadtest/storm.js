@@ -4,6 +4,7 @@
 //   AUTH_URL  where password routes go (the api-auth bulkhead)
 //   API_URL   everything else
 //   USERS, USER_OFFSET  which seed_load_users accounts to use (default the first 300)
+//   SCALE     multiplies every arrival rate (default 1: the full storm)
 //   HOST      the site's name (GRS_DOMAIN), sent as Host so Django's ALLOWED_HOSTS accepts it
 // URLs default to the containers themselves, so the app is measured, not the per-IP edge
 // limit that one load generator would hit (edge-check.js covers that separately).
@@ -17,6 +18,9 @@ const AUTH = __ENV.AUTH_URL || "http://api-auth:8000";
 const API = __ENV.API_URL || "http://api:8000";
 const USERS = parseInt(__ENV.USERS || "300");
 const PASSWORD = "demo-password-2026";
+// Multiplies every arrival rate: SCALE=0.5 is half the storm. Used to find a server's limit.
+const SCALE = parseFloat(__ENV.SCALE || "1");
+const r = (n) => Math.max(1, Math.round(n * SCALE));
 const OFFSET = parseInt(__ENV.USER_OFFSET || "0"); // a fresh slice of accounts per run
 const phone = (i) => `+880${1099000000 + OFFSET + (i % USERS)}`;
 const BASE_HEADERS = { "Content-Type": "application/json", ...(__ENV.HOST ? { Host: __ENV.HOST } : {}) };
@@ -31,13 +35,13 @@ export const options = {
     login_burst: {
       executor: "ramping-arrival-rate",
       exec: "login",
-      startRate: 5,
+      startRate: r(5),
       timeUnit: "1s",
       preAllocatedVUs: 50,
       maxVUs: 200,
       stages: [
-        { target: 30, duration: "30s" },
-        { target: 30, duration: "1m" },
+        { target: r(30), duration: "30s" },
+        { target: r(30), duration: "1m" },
         { target: 0, duration: "15s" },
       ],
     },
@@ -45,7 +49,7 @@ export const options = {
     browse: {
       executor: "constant-arrival-rate",
       exec: "browse",
-      rate: 60,
+      rate: r(60),
       timeUnit: "1s",
       duration: "1m45s",
       preAllocatedVUs: 50,
@@ -55,7 +59,7 @@ export const options = {
     submit: {
       executor: "constant-arrival-rate",
       exec: "submit",
-      rate: 5,
+      rate: r(5),
       timeUnit: "1s",
       duration: "1m45s",
       preAllocatedVUs: 20,
