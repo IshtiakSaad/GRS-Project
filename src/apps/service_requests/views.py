@@ -11,7 +11,10 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import Role
 from apps.accounts.permissions import IsAnyUser, IsOfficer, IsPublic
-from apps.common import idempotency
+from apps.audit import access
+from apps.audit.models import AccessKind
+from apps.audit.serializers import BreakGlassIn
+from apps.common import idempotency, ratelimit
 from apps.common.errors import AppError
 from apps.common.pagination import KeysetPagination
 from apps.common.schema import errors
@@ -153,6 +156,7 @@ class RequestsView(APIView):
             rows = rows.filter(status__in=OPEN_STATUSES, due_at__lt=Now())
         paginator = KeysetPagination()
         page = paginator.paginate_queryset(rows, request, view=self)
+        access.record_list(request.user, [r.pk for r in page])
         staff = request.user.role != Role.CITIZEN
         row = serializers.StaffRowOut if staff else serializers.RequestRowOut
         return paginator.get_paginated_response(row(page, many=True).data)
@@ -187,6 +191,7 @@ class RequestView(APIView):
         req = req.first()
         if req is None:
             raise Http404
+        access.record(request.user, req)
         if request.headers.get("If-None-Match") == _etag(req):
             return Response(status=status.HTTP_304_NOT_MODIFIED, headers={"ETag": _etag(req)})
         return _detail(req, request.user)
@@ -221,6 +226,9 @@ class RequestActionView(APIView):
     """Every state change after the draft, by name (design §5.2)."""
 
     permission_classes = [IsAnyUser]
+
+    def rate_limit(self, request):
+        return ratelimit.SUBMIT if self.kwargs.get("action") == "submit" else None
 
     @extend_schema(
         tags=TAG,
@@ -257,6 +265,7 @@ class RequestActionView(APIView):
 
         def run():
             req = transitions.perform(request.user, request_id, action, data, http_request=request)
+            access.record(request.user, req, AccessKind.UPDATE)
             return status.HTTP_200_OK, present(_reload(req), request.user)
 
         if action != "submit":
@@ -302,6 +311,7 @@ class RequestPriorityView(APIView):
             if_match=_if_match(request),
             http_request=request,
         )
+        access.record(request.user, req, AccessKind.UPDATE)
         return _detail(_reload(req), request.user)
 
 
@@ -319,6 +329,32 @@ class ByTrackingView(APIView):
     )
     def get(self, request, number):
         req = services.by_tracking_no(request.user, number)
+        access.record(request.user, req)
+        return _detail(_reload(req), request.user)
+
+
+class BreakGlassView(APIView):
+    """An officer opening a request outside their scope: a citizen phones about it, a
+    supervisor reviews it. Allowed only with a stated reason, recorded, and read-only: acting
+    on the request still needs it to be in scope."""
+
+    permission_classes = [IsOfficer]
+
+    @extend_schema(
+        tags=TAG,
+        request=BreakGlassIn,
+        responses={
+            200: serializers.StaffRequestOut,
+            **errors(e400=["VALIDATION_ERROR", "INVALID_TRACKING_NO"], e404=["NOT_FOUND"]),
+        },
+        description="Open any submitted request by tracking number, with a reason code "
+        "(`OTHER` needs a note of at least 20 characters). Every use is on the monthly "
+        "break-glass report and in the citizen's access log.",
+    )
+    def post(self, request):
+        data = _input(BreakGlassIn, request)
+        req = services.by_tracking_no_anywhere(data["tracking_no"])
+        access.record(request.user, req, reason=data["reason"], note=data.get("note") or None)
         return _detail(_reload(req), request.user)
 
 
@@ -335,6 +371,7 @@ class TimelineView(APIView):
         req = transitions.visible_to(request.user).filter(public_id=request_id).first()
         if req is None:
             raise Http404
+        access.record(request.user, req)
         events = req.events.select_related("actor").order_by("created_at", "id")
         if request.user.role == Role.CITIZEN:
             return Response(serializers.EventOut(events.filter(is_public=True), many=True).data)
@@ -355,7 +392,8 @@ class QueueView(APIView):
     )
     def get(self, request):
         waiting = services.queue(request.user)
-        rows = waiting.select_related("category", "owner")[:QUEUE_PAGE]
+        rows = list(waiting.select_related("category", "owner")[:QUEUE_PAGE])
+        access.record_list(request.user, [r.pk for r in rows])
         return Response(
             {
                 "waiting": waiting.count(),
@@ -378,4 +416,5 @@ class ClaimNextView(APIView):
         req = services.claim_next(request.user, http_request=request)
         if req is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
+        access.record(request.user, req, AccessKind.UPDATE)
         return _detail(_reload(req), request.user)

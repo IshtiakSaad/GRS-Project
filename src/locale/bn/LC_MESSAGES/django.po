@@ -179,3 +179,16 @@ msgstr "PDF, JPEG বা PNG ফাইল আপলোড করুন।"
 
 msgid "You cannot deactivate your own account."
 msgstr "আপনি নিজের অ্যাকাউন্ট নিষ্ক্রিয় করতে পারবেন না।"
+
+msgid "Choose between 1 and 366 days."
+msgstr "১ থেকে ৩৬৬ দিনের মধ্যে বেছে নিন।"
+
+msgid "Explain the reason in at least 20 characters."
+msgstr "কারণটি অন্তত ২০ অক্ষরে লিখুন।"
+
+msgid "Only the citizen and auditors see this log."
+msgstr "এই লগ শুধু নাগরিক ও নিরীক্ষকরা দেখতে পারেন।"
+
+#, python-format
+msgid "Too many requests. Try again in %(seconds)s seconds."
+msgstr "অনেক বেশি অনুরোধ। %(seconds)s সেকেন্ড পরে আবার চেষ্টা করুন।"

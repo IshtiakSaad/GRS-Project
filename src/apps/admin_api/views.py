@@ -13,6 +13,7 @@ from rest_framework.views import APIView
 
 from apps.accounts.models import User
 from apps.accounts.permissions import IsAdmin
+from apps.common import ratelimit
 from apps.common.errors import AppError
 from apps.common.pagination import KeysetPagination
 from apps.common.schema import errors
@@ -32,6 +33,7 @@ def _input(serializer_class, request, *, data=None, partial=False):
 
 class AdminView(APIView):
     permission_classes = [IsAdmin]
+    rate_limits = dict.fromkeys(("POST", "PATCH", "DELETE"), ratelimit.ADMIN_WRITE)
 
 
 # --- departments ------------------------------------------------------------------------------

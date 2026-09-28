@@ -8,6 +8,7 @@ api_v1 = [
     path("", include("apps.service_requests.urls")),
     path("", include("apps.collab.urls")),
     path("", include("apps.admin_api.urls")),
+    path("", include("apps.audit.urls")),
 ]
 
 urlpatterns = [
