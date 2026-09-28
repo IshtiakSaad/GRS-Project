@@ -18,5 +18,5 @@ docker volume rm "${PROJECT}_pgdata" "${PROJECT}_storage"
 $COMPOSE up -d --wait postgres storage redis-broker redis-cache mailpit
 $COMPOSE run --rm migrate
 $COMPOSE run --rm --no-deps api python manage.py seed_demo
-$COMPOSE up -d
+$COMPOSE up -d --wait   # report ok only once every service is healthy
 echo "$(date -u +%FT%TZ) demo reset ok"
