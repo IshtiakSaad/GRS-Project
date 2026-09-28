@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { Guard } from "@/components/shell";
 import { Card, ErrorNotice, Loading, PageTitle, Select, TextInput } from "@/components/ui";
+import { useAdminCategories, useDepartments } from "@/lib/admin";
 import { get, qs } from "@/lib/api";
 import { formatNumber, formatPercent, todayInDhaka } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
@@ -87,7 +88,15 @@ const COUNTS: [keyof Metrics["counts"], Key][] = [
 ];
 
 function Dashboard() {
-  const { t, lang } = useI18n();
+  const { t, lang, name } = useI18n();
+  const departments = useDepartments();
+  const categories = useAdminCategories();
+  // The report names groups in English only; departments and services have both names.
+  const groupName = (g: Stats["groups"][number]["group"]) => {
+    const list = by === "department" ? departments.rows : by === "category" ? categories.rows : null;
+    const found = list?.find((x) => x.code === g.code);
+    return found ? name(found) : (g.name ?? t("req.unassigned"));
+  };
   const [by, setBy] = useState<By>("department");
   const [from, setFrom] = useState(todayInDhaka(-30));
   const [to, setTo] = useState(todayInDhaka());
@@ -153,7 +162,7 @@ function Dashboard() {
               <tbody className="divide-y divide-slate-100">
                 {stats.groups.map((g, i) => (
                   <tr key={g.group.code ?? `none-${i}`}>
-                    <td className="px-3 py-2 font-medium">{g.group.name ?? t("req.unassigned")}</td>
+                    <td className="px-3 py-2 font-medium">{groupName(g.group)}</td>
                     <td className="px-3 py-2">{n(g.counts.submitted)}</td>
                     <td className={`px-3 py-2 ${g.counts.overdue ? "text-red-700" : ""}`}>{n(g.counts.overdue)}</td>
                     <td className="px-3 py-2">{pct(g.primary.on_time_resolution_rate)}</td>

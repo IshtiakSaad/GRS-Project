@@ -8,7 +8,7 @@ Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Re
 
 | | |
 |---|---|
-| Tests | 1,044 (unit, integration against real PostgreSQL, meta-tests), 97% coverage; Playwright end-to-end through all three roles on a phone-sized browser. All run in CI on every push |
+| Tests | 1,044 (unit, integration against real PostgreSQL, meta-tests), 97% coverage; Playwright end-to-end on a phone-sized browser: every screen and every action of the three roles. All run in CI on every push |
 | Live checks | k6 load test, broker-outage chaos run, edge rate-limit check, backup restore: [results](#results-from-the-live-server) |
 | Docs | [Architecture](docs/architecture.md) · [Decisions](docs/decisions/) · [Runbook](docs/runbook.md) · [Load tests](loadtest/README.md) |
 

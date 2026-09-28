@@ -104,12 +104,20 @@ export function Summary({ req, staff }: { req: ServiceRequest; staff: boolean })
 
 // --- timeline --------------------------------------------------------------------------------
 
+// The event stores priority as the database's number (1 = LOW … 4 = URGENT).
+const PRIORITY_BY_NUMBER = ["", "LOW", "NORMAL", "HIGH", "URGENT"];
+
+function priorityName(value: unknown, t: (k: Key) => string): string {
+  const code = typeof value === "number" ? PRIORITY_BY_NUMBER[value] : String(value);
+  return t(`priority.${code}` as Key);
+}
+
 function eventText(e: TimelineEvent, t: (k: Key, v?: Record<string, string | number>) => string): string[] {
   const d = (e.data ?? {}) as Record<string, string>;
   const lines: string[] = [];
   if (e.type === "request_info" && d.reason_code) lines.push(t(`pause.${d.reason_code}` as Key));
   if (e.type === "reject" && d.reason_code) lines.push(t(`reject.${d.reason_code}` as Key));
-  if (e.type === "set_priority" && d.to) lines.push(`${t(`priority.${d.from}` as Key)} → ${t(`priority.${d.to}` as Key)}`);
+  if (e.type === "set_priority" && d.to) lines.push(`${priorityName(d.from, t)} → ${priorityName(d.to, t)}`);
   for (const k of ["message", "note", "reason"]) if (d[k]) lines.push(d[k]);
   return lines;
 }

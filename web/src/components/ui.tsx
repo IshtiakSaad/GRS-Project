@@ -121,7 +121,8 @@ export function ErrorNotice({ error }: { error: unknown }) {
   if (error instanceof ApiError) {
     if (error.code === "NETWORK") text = t("error.network");
     else if (error.message) text = error.message;
-    if (error.retryAfter) text += ` ${t("error.retryIn", { n: error.retryAfter })}`;
+    // The API's own message usually says when to retry; add it only when there is none.
+    if (error.retryAfter && !error.message) text += ` ${t("error.retryIn", { n: error.retryAfter })}`;
     ref = error.requestId;
   }
   return (
@@ -311,7 +312,7 @@ export function Tabs<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <div role="tablist" className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-slate-100 p-1">
+    <div role="tablist" className="mb-4 flex flex-wrap gap-1 rounded-lg bg-slate-100 p-1">
       {options.map((o) => (
         <button
           key={o.value}

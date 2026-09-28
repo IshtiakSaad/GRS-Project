@@ -89,8 +89,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {state.status !== "loading" && (
-          <nav aria-label={t("nav.menu")} className="mx-auto max-w-5xl overflow-x-auto px-2">
-            <ul className="flex gap-1">
+          <nav aria-label={t("nav.menu")} className="mx-auto max-w-5xl px-2">
+            {/* Wraps on a phone: seven admin items do not fit, and hidden ones look missing. */}
+            <ul className="flex flex-wrap gap-x-1">
               {items.map(([key, href]) => {
                 const active = isActive(pathname, href);
                 return (

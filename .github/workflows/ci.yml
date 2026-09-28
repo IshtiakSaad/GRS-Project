@@ -52,7 +52,8 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - run: cp .env.example .env
+      # Every resolution goes to the review queue, so the review screens have work to test.
+      - run: cp .env.example .env && echo "REVIEW_SAMPLE_RATE=1" >> .env
       - run: docker compose up -d --build --wait --wait-timeout 240
       - name: Load demo data; keep the administrator's two-step secret for the tests
         run: |

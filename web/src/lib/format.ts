@@ -26,6 +26,8 @@ export function formatDateTime(iso: string | null | undefined, lang: Lang): stri
     month: "short",
     hour: "numeric",
     minute: "2-digit",
+    // bn-BD would print a Latin "PM" after Bangla digits; a 24-hour clock reads cleanly.
+    hourCycle: lang === "bn" ? "h23" : "h12",
   }).format(new Date(iso));
 }
 
