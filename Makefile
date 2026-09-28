@@ -16,6 +16,7 @@ test:          ## Run the test suite inside the image, against the running stack
 		-e DATABASE_URL=postgres://grs_owner:owner-local@postgres:5432/grs \
 		-e REDIS_CACHE_URL=redis://redis-cache:6379/1 \
 		-e REDIS_BROKER_URL=redis://redis-broker:6379/1 \
+		-e S3_ENDPOINT=http://storage:8333 \
 		grs-app:test pytest $(ARGS)
 
 lint:          ## Lint and check formatting

@@ -28,7 +28,9 @@ INSTALLED_APPS = [
     "apps.accounts",
     "apps.directory",
     "apps.service_requests",
+    "apps.sla",
     "apps.collab",
+    "apps.admin_api",
     "apps.notifications",
     "apps.audit",
 ]
@@ -106,6 +108,11 @@ CELERY_BEAT_SCHEDULE: dict = {
         "task": "apps.common.tasks.purge_idempotency_records",
         "schedule": 3600.0,
     },
+    # Uploads whose verification task was lost (broker down, worker crash) are re-queued.
+    "sweep-stuck-attachments": {
+        "task": "apps.collab.tasks.sweep_stuck_attachments",
+        "schedule": 300.0,
+    },
 }
 
 # --- Internationalisation -------------------------------------------------------------------
@@ -160,6 +167,19 @@ EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@grs.example.com")
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="http://localhost:8080")
 
+# --- Attachments (design §13) -----------------------------------------------------------------
+# Files never pass through the app servers: clients upload to and download from the object
+# store with short-lived presigned URLs. The store is self-hosted, in-country (decision D1).
+# The API reaches it at S3_ENDPOINT; URLs handed to clients use S3_PUBLIC_ENDPOINT.
+S3_ENDPOINT = env("S3_ENDPOINT", default="http://storage:8333")
+S3_PUBLIC_ENDPOINT = env("S3_PUBLIC_ENDPOINT", default="http://localhost:8333")
+S3_ACCESS_KEY = env("S3_ACCESS_KEY", default="grs-local")
+S3_SECRET_KEY = env("S3_SECRET_KEY", default="grs-local-secret")
+S3_BUCKET = env("S3_BUCKET", default="attachments")
+S3_REGION = env("S3_REGION", default="us-east-1")
+# Swappable: the fake flags the EICAR test file; production plugs in ClamAV behind the same API.
+ATTACHMENT_SCANNER = env("ATTACHMENT_SCANNER", default="apps.collab.scanning.EicarScanner")
+
 # --- API ------------------------------------------------------------------------------------
 REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
@@ -186,6 +206,8 @@ SPECTACULAR_SETTINGS = {
     "ENUM_NAME_OVERRIDES": {
         "PauseReasonEnum": "apps.service_requests.models.PauseReason",
         "RejectionReasonEnum": "apps.service_requests.models.RejectionReason",
+        "RequestStatusEnum": "apps.service_requests.models.Status",
+        "AttachmentStatusEnum": "apps.collab.models.AttachmentStatus",
     },
 }
 

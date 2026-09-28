@@ -53,6 +53,10 @@ TEMPLATES = {
         "bn": "আবেদন {tracking_no} আপনাকে দেওয়া হয়েছে।",
         "en": "Request {tracking_no} has been assigned to you.",
     },
+    "request_comment": {
+        "bn": "আবেদন {tracking_no}: অফিস থেকে নতুন বার্তা। দেখতে লগইন করুন।",
+        "en": "Request {tracking_no}: a new message from the office. Log in to read it.",
+    },
     "request_withdrawn": {
         "bn": "আবেদন {tracking_no} প্রত্যাহার করা হয়েছে।",
         "en": "Request {tracking_no} was withdrawn.",
