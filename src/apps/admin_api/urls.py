@@ -15,4 +15,6 @@ urlpatterns = [
     path("admin/users/<uuid:user_id>", views.UserView.as_view()),
     path("admin/users/<uuid:user_id>/reset-password", views.UserResetPasswordView.as_view()),
     path("admin/stats", views.StatsView.as_view()),
+    path("admin/reviews", views.ReviewsView.as_view()),
+    path("admin/reviews/<uuid:review_id>/decision", views.ReviewDecisionView.as_view()),
 ]

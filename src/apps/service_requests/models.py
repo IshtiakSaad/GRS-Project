@@ -284,3 +284,68 @@ class RequestEvent(models.Model):
     class Meta:
         db_table = "request_event"
         indexes = [models.Index(fields=["request", "created_at"], name="request_event_request_idx")]
+
+
+class ReviewReason(models.TextChoices):
+    LATE_REJECTION = "LATE_REJECTION"  # rejected near the deadline: a way to dodge the SLA
+    SAMPLE = "SAMPLE"  # a random share of resolutions, so quality is checked, not assumed
+
+
+class ReviewStatus(models.TextChoices):
+    PENDING = "PENDING"
+    UPHELD = "UPHELD"
+    OVERTURNED = "OVERTURNED"  # the request went back to the queue
+
+
+class Review(models.Model):
+    """A closed request an administrator checks after the fact."""
+
+    public_id = models.UUIDField(default=uuid7, unique=True, editable=False)
+    request = models.ForeignKey(
+        ServiceRequest, on_delete=models.PROTECT, related_name="reviews", db_index=False
+    )
+    reason = models.CharField(max_length=16, choices=ReviewReason)
+    decided_status = models.CharField(max_length=16, choices=Status)  # RESOLVED or REJECTED
+    officer = models.ForeignKey(  # who closed it
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", db_index=False
+    )
+    status = models.CharField(max_length=12, choices=ReviewStatus, default=ReviewStatus.PENDING)
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="+",
+        db_index=False,
+    )
+    note = models.CharField(max_length=2000, null=True, blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    created_at = created_at_field()
+
+    class Meta:
+        db_table = "request_review"
+        constraints = [
+            in_choices("reason", ReviewReason, "request_review"),
+            in_choices("status", ReviewStatus, "request_review"),
+            models.CheckConstraint(
+                condition=Q(status=ReviewStatus.PENDING)
+                | Q(reviewer__isnull=False, reviewed_at__isnull=False),
+                name="request_review_decided_has_reviewer",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status=ReviewStatus.OVERTURNED) | Q(note__isnull=False),
+                name="request_review_overturn_explained",
+            ),
+            models.CheckConstraint(  # nobody reviews their own decision
+                condition=Q(reviewer__isnull=True) | ~Q(reviewer=F("officer")),
+                name="request_review_no_self_review",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["created_at"],
+                condition=Q(status=ReviewStatus.PENDING),
+                name="request_review_pending_idx",
+            ),  # the queue
+            models.Index(fields=["request"], name="request_review_request_idx"),
+        ]

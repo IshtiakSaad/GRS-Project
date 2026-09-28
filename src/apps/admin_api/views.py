@@ -20,7 +20,7 @@ from apps.common.schema import errors
 from apps.directory.models import Category, Department, Holiday, SlaSuspension
 from apps.sla.calendar import DHAKA
 
-from . import serializers, services, stats
+from . import reviews, serializers, services, stats
 
 INVALID = ["VALIDATION_ERROR"]
 
@@ -298,3 +298,46 @@ class StatsView(AdminView):
             message = _("Choose a period of at most 400 days, date_from before date_to.")
             raise AppError("VALIDATION_ERROR", message, 400, {"date_from": [message]})
         return Response(serializers.StatsOut(stats.report(wanted["by"], first, last)).data)
+
+
+# --- review queue -----------------------------------------------------------------------------
+
+
+class ReviewsView(AdminView):
+    @extend_schema(
+        tags=["admin"],
+        parameters=[serializers.ReviewFilterIn],
+        responses={200: serializers.ReviewOut(many=True), **errors(e400=INVALID)},
+        description="Closed requests to check after the fact: every late rejection, and a "
+        "random share of resolutions. Newest first; filter status=PENDING for the queue.",
+    )
+    def get(self, request):
+        wanted = _input(serializers.ReviewFilterIn, request, data=request.query_params)
+        rows = reviews.queue(**wanted)
+        paginator = KeysetPagination()
+        page = paginator.paginate_queryset(rows, request, view=self)
+        return paginator.get_paginated_response(serializers.ReviewOut(page, many=True).data)
+
+
+class ReviewDecisionView(AdminView):
+    @extend_schema(
+        tags=["admin"],
+        request=serializers.ReviewDecisionIn,
+        responses={
+            200: serializers.ReviewOut,
+            **errors(
+                e400=INVALID,
+                e403=["OWN_DECISION"],
+                e404=["NOT_FOUND"],
+                e409=["ALREADY_REVIEWED", "REQUEST_CHANGED"],
+            ),
+        },
+        description="UPHOLD closes the review. OVERTURN (a note is required) sends the request "
+        "back to the queue with a new deadline and tells the citizen.",
+    )
+    def post(self, request, review_id):
+        data = _input(serializers.ReviewDecisionIn, request)
+        review = reviews.decide(
+            request.user, review_id, data["decision"], data.get("note"), http_request=request
+        )
+        return Response(serializers.ReviewOut(review).data)
