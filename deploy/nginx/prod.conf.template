@@ -28,7 +28,7 @@ server {
     http2 on;
     server_name ${GRS_DOMAIN};
 
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    # HSTS here comes from Django (SECURE_HSTS_SECONDS); adding it again would send it twice.
     add_header X-Demo "Public demo: synthetic data only, reset every night" always;
 
     include /etc/nginx/grs/api.conf;
