@@ -110,3 +110,72 @@ msgstr "এই আবেদনে আপনি এটি করতে পার�
 
 msgid "You submitted the same request a few minutes ago."
 msgstr "কয়েক মিনিট আগে আপনি একই আবেদন জমা দিয়েছেন।"
+
+msgid "A category's department never changes."
+msgstr "কোনো সেবার বিভাগ কখনো বদলায় না।"
+
+msgid "A suspension is at most a year."
+msgstr "স্থগিতের মেয়াদ সর্বোচ্চ এক বছর।"
+
+msgid "At most 400 days at a time."
+msgstr "একবারে সর্বোচ্চ ৪০০ দিন।"
+
+msgid "Choose a period of at most 400 days, date_from before date_to."
+msgstr "সর্বোচ্চ ৪০০ দিনের সময়কাল বেছে নিন; date_from যেন date_to-এর আগে হয়।"
+
+msgid "Choose an existing department."
+msgstr "একটি বিদ্যমান বিভাগ বেছে নিন।"
+
+msgid "Citizens reset their own password, or at a help desk with their ID."
+msgstr "নাগরিক নিজেই পাসওয়ার্ড রিসেট করবেন, অথবা পরিচয়পত্র নিয়ে হেল্প ডেস্কে।"
+
+msgid "Enter a year, e.g. 2026."
+msgstr "একটি বছর লিখুন, যেমন ২০২৬।"
+
+msgid "Files can be at most 10 MB."
+msgstr "ফাইল সর্বোচ্চ ১০ MB হতে পারে।"
+
+msgid "Must not be before date_from."
+msgstr "date_from-এর আগে হতে পারবে না।"
+
+msgid "Must not be before starts_on."
+msgstr "starts_on-এর আগে হতে পারবে না।"
+
+msgid "Only officers belong to a department."
+msgstr "শুধু কর্মকর্তারাই কোনো বিভাগের অধীন।"
+
+msgid "Only staff can write internal comments."
+msgstr "শুধু কর্মীরাই অভ্যন্তরীণ মন্তব্য লিখতে পারেন।"
+
+msgid "Submit the request before commenting."
+msgstr "মন্তব্য করার আগে আবেদনটি জমা দিন।"
+
+msgid "This code is already used."
+msgstr "এই কোড ইতিমধ্যে ব্যবহৃত।"
+
+msgid "This date is already a holiday."
+msgstr "এই তারিখ ইতিমধ্যে ছুটির দিন।"
+
+msgid "This department is not active."
+msgstr "এই বিভাগটি সক্রিয় নয়।"
+
+msgid "This file is not available."
+msgstr "এই ফাইলটি পাওয়া যাচ্ছে না।"
+
+msgid "This file was rejected."
+msgstr "এই ফাইলটি গ্রহণ করা হয়নি।"
+
+msgid "This phone number already has an account."
+msgstr "এই ফোন নম্বরে ইতিমধ্যে একটি অ্যাকাউন্ট আছে।"
+
+msgid "This request already has the most files allowed."
+msgstr "এই আবেদনে সর্বোচ্চ সংখ্যক ফাইল ইতিমধ্যে যুক্ত আছে।"
+
+msgid "This request is closed."
+msgstr "এই আবেদনটি বন্ধ হয়ে গেছে।"
+
+msgid "Upload a PDF, JPEG or PNG file."
+msgstr "PDF, JPEG বা PNG ফাইল আপলোড করুন।"
+
+msgid "You cannot deactivate your own account."
+msgstr "আপনি নিজের অ্যাকাউন্ট নিষ্ক্রিয় করতে পারবেন না।"

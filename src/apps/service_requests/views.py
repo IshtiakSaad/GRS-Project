@@ -1,5 +1,6 @@
 """HTTP for requests. Thin: validate input, call a service, shape the answer for the caller."""
 
+from django.db.models.functions import Now
 from django.http import Http404
 from django.utils.translation import gettext as _
 from drf_spectacular.utils import OpenApiParameter, PolymorphicProxySerializer, extend_schema
@@ -17,7 +18,7 @@ from apps.common.schema import errors
 from apps.directory.models import Category
 
 from . import serializers, services, transitions
-from .models import ServiceRequest, Status
+from .models import OPEN_STATUSES, ServiceRequest
 
 TAG = ["requests"]
 QUEUE_PAGE = 20
@@ -52,7 +53,11 @@ DRAFT_EDIT_ERRORS = {
 
 
 def _input(serializer_class, request, partial=False):
-    s = serializer_class(data=request.data, partial=partial)
+    return _input_from(serializer_class, request.data, partial)
+
+
+def _input_from(serializer_class, data, partial=False):
+    s = serializer_class(data=data, partial=partial)
     s.is_valid(raise_exception=True)
     return s.validated_data
 
@@ -123,21 +128,29 @@ class RequestsView(APIView):
 
     @extend_schema(
         tags=TAG,
-        parameters=[OpenApiParameter("status", str, enum=Status.values)],
+        parameters=[serializers.ListFilterIn],
         responses={
             200: serializers.RequestRowOut(many=True),
             **errors(e400=["VALIDATION_ERROR"]),
         },
         description="Citizens see their own requests; staff see short rows of the requests in "
-        "their scope and open one to see details.",
+        "their scope and open one to see details. Administrators see every request, so this "
+        "is also the admin's all-requests list; the filters narrow any caller's scope, never "
+        "widen it.",
     )
     def get(self, request):
         rows = transitions.visible_to(request.user).select_related("category", "owner")
-        wanted = request.query_params.get("status")
-        if wanted:
-            if wanted not in Status.values:
-                raise AppError("VALIDATION_ERROR", _("Unknown status."), 400)
-            rows = rows.filter(status=wanted)
+        wanted = _input_from(serializers.ListFilterIn, request.query_params)
+        if "status" in wanted:
+            rows = rows.filter(status=wanted["status"])
+        if "category" in wanted:
+            rows = rows.filter(category__code=wanted["category"])
+        if "department" in wanted:
+            rows = rows.filter(department__code=wanted["department"])
+        if "officer" in wanted:
+            rows = rows.filter(assigned_officer__public_id=wanted["officer"])
+        if wanted.get("overdue"):
+            rows = rows.filter(status__in=OPEN_STATUSES, due_at__lt=Now())
         paginator = KeysetPagination()
         page = paginator.paginate_queryset(rows, request, view=self)
         staff = request.user.role != Role.CITIZEN

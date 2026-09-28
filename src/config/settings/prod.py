@@ -6,8 +6,8 @@ from .base import *
 
 # The placeholder secrets in .env.example and the test settings are public; production must
 # never start with them. (The last marker is the base64 of the example Fernet key.)
-_PLACEHOLDERS = ("local-dev-only", "test-only", "bG9jYWwtZGV2LW9ubHkt")
-_secrets = [SECRET_KEY, *JWT_SIGNING_KEYS.values(), *FIELD_ENCRYPTION_KEYS]
+_PLACEHOLDERS = ("local-dev-only", "test-only", "bG9jYWwtZGV2LW9ubHkt", "grs-local")
+_secrets = [SECRET_KEY, *JWT_SIGNING_KEYS.values(), *FIELD_ENCRYPTION_KEYS, S3_SECRET_KEY]
 if any(marker in value for marker in _PLACEHOLDERS for value in _secrets):
     raise ImproperlyConfigured("placeholder secrets in production settings")
 

@@ -17,6 +17,8 @@ os.environ.setdefault(
 os.environ.setdefault("JWT_ACTIVE_KID", "t1")
 os.environ.setdefault("FIELD_ENCRYPTION_KEYS", "dGVzdC1vbmx5LWZpZWxkLWtleS1ub3QtYS1zZWNyZXQ=")
 os.environ.setdefault("DEMO_MODE", "true")
+os.environ.setdefault("S3_ENDPOINT", "http://localhost:8333")
+os.environ.setdefault("S3_PUBLIC_ENDPOINT", os.environ["S3_ENDPOINT"])
 
 from .base import *  # noqa: E402
 

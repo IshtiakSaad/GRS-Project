@@ -8,7 +8,7 @@ from apps.accounts.models import Role
 from apps.common.fields import TextField
 from apps.directory.models import Category
 
-from .models import PauseReason, Priority, RejectionReason, Relation, ServiceRequest
+from .models import PauseReason, Priority, RejectionReason, Relation, ServiceRequest, Status
 
 
 class PriorityField(serializers.ChoiceField):
@@ -48,6 +48,16 @@ class DraftIn(serializers.Serializer):
     )
     citizen_urgent = serializers.BooleanField(default=False)
     urgency_reason = TextField(max_length=500, required=False, allow_null=True)
+
+
+class ListFilterIn(serializers.Serializer):
+    status = serializers.ChoiceField(Status.choices, required=False)
+    category = serializers.CharField(max_length=30, required=False, help_text="Category code.")
+    department = serializers.CharField(max_length=20, required=False, help_text="Department code.")
+    officer = serializers.UUIDField(required=False, help_text="Assigned officer's id.")
+    overdue = serializers.BooleanField(
+        required=False, help_text="true: open requests past their deadline."
+    )
 
 
 # --- action inputs ----------------------------------------------------------------------------

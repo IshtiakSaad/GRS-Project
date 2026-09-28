@@ -39,6 +39,18 @@ A request's life, as a citizen and then an officer:
 | Take the next request | `POST /api/v1/queue/claim-next` (officer) |
 | Work it | `POST /api/v1/requests/{id}/actions/start`, then `resolve` |
 | Track it | `GET /api/v1/requests/by-tracking/{number}`, Bangla digits accepted |
+| Talk about it | `POST /api/v1/requests/{id}/comments`; staff may mark a comment `internal` |
+| Attach a file | `POST /api/v1/requests/{id}/attachments` → `PUT` the file to the returned URL → `POST /api/v1/attachments/{id}/confirm`; it is checked, then downloadable |
+
+Administration (an administrator with a two-step session):
+
+| Task | Call |
+|---|---|
+| Departments, services, holidays, SLA suspensions | `/api/v1/admin/departments`, `/admin/categories`, `/admin/holidays`, `/admin/sla-suspensions` |
+| Officers | `POST /api/v1/admin/users` (the officer sets their own password by SMS code), `PATCH` to deactivate |
+| Assign | `POST /api/v1/requests/{id}/actions/assign` |
+| All requests | `GET /api/v1/requests` with `status`, `category`, `department`, `officer`, `overdue` filters |
+| Statistics | `GET /api/v1/admin/stats?by=department\|category\|officer`: each metric with the numbers that would show it being gamed |
 
 Run the tests against the running stack:
 
@@ -48,6 +60,7 @@ docker run --rm --network grs-project_default \
   -e DATABASE_URL=postgres://grs_owner:owner-local@postgres:5432/grs \
   -e REDIS_CACHE_URL=redis://redis-cache:6379/1 \
   -e REDIS_BROKER_URL=redis://redis-broker:6379/1 \
+  -e S3_ENDPOINT=http://storage:8333 \
   grs-app:test
 ```
 

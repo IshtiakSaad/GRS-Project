@@ -37,7 +37,7 @@ jobs:
           cache: pip
           cache-dependency-path: requirements/dev.txt
       - run: cp .env.example .env
-      - run: docker compose up -d --build --wait postgres redis-broker redis-cache
+      - run: docker compose up -d --build --wait postgres redis-broker redis-cache storage
       - run: pip install --require-hashes -r requirements/dev.txt
       - name: Compile translations
         run: |
@@ -47,7 +47,7 @@ jobs:
         env:
           DATABASE_URL: postgres://grs_owner:owner-local@localhost:5432/grs
       - if: failure()
-        run: docker compose logs --no-color postgres
+        run: docker compose logs --no-color postgres storage
 
   # Boots the real stack the way a reviewer would, then checks that Nginx serves the build
   # that was just made. The same check guards production deploys.

@@ -6,6 +6,8 @@ from apps.common import views as common_views
 api_v1 = [
     path("", include("apps.accounts.urls")),
     path("", include("apps.service_requests.urls")),
+    path("", include("apps.collab.urls")),
+    path("", include("apps.admin_api.urls")),
 ]
 
 urlpatterns = [
