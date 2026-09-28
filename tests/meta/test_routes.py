@@ -61,6 +61,7 @@ def test_public_views_are_the_ones_we_meant():
             "api/v1/auth/password/reset/confirm",
             "api/v1/auth/email/verify",
             "api/v1/demo/sms/<str:phone>",
+            "api/v1/categories",
         ]
     )
 

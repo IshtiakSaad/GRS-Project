@@ -10,7 +10,10 @@ class _HasRole(BasePermission):
 
     def has_permission(self, request, view):
         user = request.user
-        return bool(user and user.is_authenticated and user.role in self.roles)
+        if not (user and user.is_authenticated and user.role in self.roles):
+            return False
+        # An administrator's token is worth nothing without the second step, on every route.
+        return user.role != Role.ADMIN or bool(request.auth and request.auth.get("mfa"))
 
 
 class IsAnyUser(_HasRole):
@@ -30,14 +33,9 @@ class IsOfficer(_HasRole):
 
 
 class IsAdmin(_HasRole):
-    """Administrators, and only with a session that passed two-step login."""
+    """Administrators (with a two-step session, like every admin route)."""
 
     roles = (Role.ADMIN,)
-
-    def has_permission(self, request, view):
-        return super().has_permission(request, view) and bool(
-            request.auth and request.auth.get("mfa")
-        )
 
 
 class IsPublic(BasePermission):

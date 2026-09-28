@@ -34,7 +34,10 @@ class TextField(serializers.CharField):
     def to_internal_value(self, data):
         if not isinstance(data, str):
             self.fail("invalid")
-        return super().to_internal_value(clean_text(data, self.multiline))
+        value = super().to_internal_value(clean_text(data, self.multiline))
+        if value == "" and not self.allow_blank:
+            self.fail("blank")  # only invisible characters were typed
+        return value
 
 
 class PasswordField(serializers.CharField):

@@ -89,6 +89,7 @@ def submitted(**kw) -> ServiceRequest:
             "status": Status.SUBMITTED,
             "tracking_no": f"26-{_n():07d}-0",
             "submitted_at": now,
+            "sla_started_at": now,
             "due_at": now + timedelta(days=7),
             **kw,
         }

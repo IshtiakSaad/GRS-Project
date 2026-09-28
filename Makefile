@@ -1,4 +1,4 @@
-.PHONY: up down logs test lint fmt shell messages
+.PHONY: up down logs test lint fmt shell messages seed
 
 up:            ## Build and start the local stack on http://localhost:8080
 	test -f .env || cp .env.example .env
@@ -28,6 +28,9 @@ messages:      ## Compile translations (.po -> .mo) into the working tree
 	docker build -q --target i18n -t grs-i18n . >/dev/null
 	docker run --rm -v "$(CURDIR)/src/locale:/locale" grs-i18n \
 		find /locale -name '*.po' -execdir msgfmt --check -o django.mo django.po ';'
+
+seed:          ## Load synthetic demo data (needs DEMO_MODE=true)
+	docker compose run --rm --no-deps api python manage.py seed_demo
 
 shell:         ## Django shell in the running API container
 	docker compose exec api python manage.py shell

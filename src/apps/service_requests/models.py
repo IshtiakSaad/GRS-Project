@@ -96,6 +96,8 @@ class ServiceRequest(models.Model):
     )
 
     submitted_at = models.DateTimeField(null=True, blank=True)
+    # Start of the current SLA cycle: the submission, or the latest reopen (a new cycle).
+    sla_started_at = models.DateTimeField(null=True, blank=True)
     due_at = models.DateTimeField(null=True, blank=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     closed_at = models.DateTimeField(null=True, blank=True)
@@ -138,6 +140,10 @@ class ServiceRequest(models.Model):
                     due_at__isnull=False,
                 ),
                 name="service_request_submitted_complete",
+            ),
+            models.CheckConstraint(
+                condition=Q(status=Status.DRAFT) | Q(sla_started_at__isnull=False),
+                name="service_request_sla_started",
             ),
             models.CheckConstraint(
                 condition=~Q(status__in=WITH_OFFICER) | Q(assigned_officer__isnull=False),
