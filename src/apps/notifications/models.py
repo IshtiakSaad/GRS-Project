@@ -120,3 +120,19 @@ class Notification(models.Model):
             ),  # the citizen's inbox
             models.Index(fields=["public_id"], name="notification_public_id_idx"),
         ]
+
+
+class DemoSms(models.Model):
+    """The fake SMS provider's outbox: what a phone would have received.
+
+    Exists so the demo can be used without a real SMS gateway; readable only in demo mode, and
+    only for the unassigned +880 10 numbers that demo mode accepts.
+    """
+
+    phone = models.CharField(max_length=16)
+    body = models.CharField(max_length=500)
+    created_at = created_at_field()
+
+    class Meta:
+        db_table = "demo_sms"
+        indexes = [models.Index(fields=["phone", "-created_at"], name="demo_sms_phone_idx")]

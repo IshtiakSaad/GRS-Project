@@ -37,8 +37,9 @@ def test_malformed_json_is_an_envelope_too(client):
 def test_views_are_closed_by_default(client):
     # A view that forgets to declare permissions must not be public.
     response = client.get("/default-permission")
-    assert response.status_code in (401, 403)
-    assert _error(response)["code"] in ("NOT_AUTHENTICATED", "PERMISSION_DENIED")
+    assert response.status_code == 401
+    assert _error(response)["code"] == "NOT_AUTHENTICATED"
+    assert response["WWW-Authenticate"].startswith("Bearer")
     assert b"leaked" not in response.content
 
 

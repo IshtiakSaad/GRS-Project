@@ -3,7 +3,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 
 from apps.common import views as common_views
 
-api_v1: list = []
+api_v1 = [
+    path("", include("apps.accounts.urls")),
+]
 
 urlpatterns = [
     path("health/live", common_views.live, name="health-live"),

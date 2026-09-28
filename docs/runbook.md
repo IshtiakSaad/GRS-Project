@@ -64,3 +64,24 @@ If a table appears: run `SELECT ensure_partitions();` as `grs_worker`, then open
 ## Tracking numbers
 
 Each year has its own sequence (`tracking_seq_2026`, ...), created six years ahead. A missing year is also created automatically on the first submission of that year. The number widens from seven to eight digits instead of failing past ten million requests in a year.
+
+## First administrator
+
+No API can create an administrator. On the host:
+
+```bash
+docker compose run --rm migrate python manage.py createadmin --phone 01000000001 --name "Admin Name"
+```
+
+The password is read from the terminal, never from the command line. The command prints the
+authenticator (TOTP) link and ten recovery codes once; store the codes offline.
+
+## Rotating keys
+
+| Key | How to rotate | Effect |
+|---|---|---|
+| `JWT_SIGNING_KEYS` / `JWT_ACTIVE_KID` | Add the new key, make it active, deploy; remove the old key after 10 minutes | None: old access tokens verify until they expire |
+| `FIELD_ENCRYPTION_KEYS` | Put the new key first, keep the old one after it, deploy | None: the first key encrypts, every key decrypts |
+| `DJANGO_SECRET_KEY` | Move the old value to `DJANGO_SECRET_KEY_FALLBACKS`, set the new one | SMS codes in flight (10 min) and the 60 s refresh retry window stop matching; device and email tokens keep working through the fallback. Recovery codes are unaffected (hashed with Argon2) |
+
+Production settings refuse to start with the placeholder keys from `.env.example`.

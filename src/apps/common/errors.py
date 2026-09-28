@@ -19,11 +19,12 @@ logger = logging.getLogger(__name__)
 class AppError(exceptions.APIException):
     """A domain error with a stable code, e.g. AppError("INVALID_TRANSITION", "...", 409)."""
 
-    def __init__(self, code: str, message: str, status_code: int = 400, fields=None):
+    def __init__(self, code: str, message: str, status_code: int = 400, fields=None, wait=None):
         super().__init__(detail=message, code=code)
         self.status_code = status_code
         self.error_code = code
         self.fields = fields or {}
+        self.wait = wait  # seconds; DRF sends it as Retry-After
 
 
 # DRF's built-in exceptions, renamed to the codes this API documents.

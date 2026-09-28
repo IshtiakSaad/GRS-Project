@@ -1,0 +1,52 @@
+# Bangla messages for the API. Bangla is the default language (Accept-Language: bn).
+# Plain words, short sentences: many users read with difficulty.
+msgid ""
+msgstr ""
+"Project-Id-Version: grs\n"
+"PO-Revision-Date: 2026-09-28 00:00+0600\n"
+"Last-Translator: GRS maintainers\n"
+"Language-Team: Bangla\n"
+"Language: bn\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "Your session has expired. Please log in again."
+msgstr "আপনার সেশনের মেয়াদ শেষ। আবার লগইন করুন।"
+
+msgid "Phone number or password is incorrect."
+msgstr "ফোন নম্বর বা পাসওয়ার্ড সঠিক নয়।"
+
+msgid "The code is incorrect or has expired."
+msgstr "কোডটি সঠিক নয় অথবা মেয়াদ শেষ।"
+
+msgid "Too many failed attempts. Try again in %(minutes)s minutes."
+msgstr "অনেকবার ভুল হয়েছে। %(minutes)s মিনিট পরে আবার চেষ্টা করুন।"
+
+msgid "Some fields are invalid."
+msgstr "কিছু তথ্য সঠিক নয়।"
+
+msgid "Your login has expired. Please log in again."
+msgstr "লগইনের মেয়াদ শেষ। আবার লগইন করুন।"
+
+msgid "Two-step login is already on."
+msgstr "দুই ধাপের লগইন আগে থেকেই চালু আছে।"
+
+msgid "Current password is incorrect."
+msgstr "বর্তমান পাসওয়ার্ড সঠিক নয়।"
+
+msgid "This email is used by another account."
+msgstr "এই ইমেইল অন্য একটি অ্যাকাউন্টে ব্যবহৃত হচ্ছে।"
+
+msgid "If the number can receive it, a code has been sent by SMS."
+msgstr "নম্বরটি সঠিক হলে এসএমএসে একটি কোড পাঠানো হয়েছে।"
+
+msgid "Not found."
+msgstr "পাওয়া যায়নি।"
+
+msgid "Something went wrong. Please try again."
+msgstr "একটি সমস্যা হয়েছে। আবার চেষ্টা করুন।"
+
+msgid "Enter a Bangladeshi mobile number, for example 01712345678."
+msgstr "বাংলাদেশি মোবাইল নম্বর লিখুন, যেমন 01712345678।"
