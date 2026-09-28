@@ -2,7 +2,7 @@ from django.urls import path
 
 from . import views
 
-# Routes that hash a password must match the api-auth location in deploy/nginx/default.conf;
+# Routes that hash a password must match the api-auth location in deploy/nginx/grs/api.conf;
 # tests/meta/test_bulkhead.py fails the build if one does not.
 urlpatterns = [
     path("auth/register", views.RegisterView.as_view()),

@@ -10,6 +10,7 @@ from django.utils.translation import gettext as _
 
 from apps.accounts.models import Role, User
 from apps.audit import services as audit
+from apps.common import broker
 from apps.common.errors import AppError
 from apps.notifications import services as notifications
 from apps.notifications.models import Kind
@@ -170,10 +171,8 @@ def confirm_upload(user: User, public_id, http_request=None) -> Attachment:
 
 def _enqueue(task, pk: int) -> None:
     """A broker outage must not fail the upload: the stuck-verification sweep retries."""
-    try:
-        task.delay(pk)
-    except Exception:  # noqa: BLE001 - any broker failure
-        logger.warning("enqueue failed; attachment %s left for the sweep", pk)
+    if not broker.enqueue(task, pk):
+        logger.info("attachment %s left for the sweep", pk)
 
 
 def download(user: User, attachment: Attachment) -> str:

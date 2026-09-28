@@ -89,7 +89,10 @@ CACHES = {
 # --- Celery ---------------------------------------------------------------------------------
 CELERY_BROKER_URL = REDIS_BROKER_URL
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_timeout": 2, "socket_connect_timeout": 2}
+CELERY_BROKER_TRANSPORT_OPTIONS = {"socket_timeout": 2, "socket_connect_timeout": 1}
+# A web request never waits long for a dead broker (the chaos run measured 4 s per attempt at
+# Celery's default); apps.common.broker then stops trying for a while.
+CELERY_BROKER_CONNECTION_TIMEOUT = 1
 # A publish that fails must fail fast: the outbox sweeper redelivers, so retrying inside a
 # web request only adds latency.
 CELERY_TASK_PUBLISH_RETRY = False

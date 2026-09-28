@@ -1,0 +1,80 @@
+# Production: TLS on three names, filled in from GRS_DOMAIN when the container starts
+# (the nginx image runs envsubst on /etc/nginx/templates/*.template; only defined
+# variables are replaced, so Nginx's own $variables are left alone).
+#
+#   ${GRS_DOMAIN}        the API and its Swagger UI
+#   files.${GRS_DOMAIN}  object storage: presigned upload and download links point here
+#   mail.${GRS_DOMAIN}   Mailpit, where demo email lands (demo only; synthetic data)
+
+include /etc/nginx/grs/http.conf;
+
+ssl_certificate     /etc/letsencrypt/live/${GRS_DOMAIN}/fullchain.pem;
+ssl_certificate_key /etc/letsencrypt/live/${GRS_DOMAIN}/privkey.pem;
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_prefer_server_ciphers off;
+ssl_session_cache shared:TLS:10m;
+ssl_session_timeout 1d;
+
+# Port 80: certificate renewals and a redirect, nothing else.
+server {
+    listen 80 default_server;
+    server_name _;
+    location /.well-known/acme-challenge/ { root /var/www/certbot; }
+    location / { return 301 https://$host$request_uri; }
+}
+
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name ${GRS_DOMAIN};
+
+    # HSTS here comes from Django (SECURE_HSTS_SECONDS); adding it again would send it twice.
+    add_header X-Demo "Public demo: synthetic data only, reset every night" always;
+
+    include /etc/nginx/grs/api.conf;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name files.${GRS_DOMAIN};
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    access_log /dev/stdout json;
+
+    # Presigned PUT and GET only; the signature is checked by the store. The API caps upload
+    # size in the signature; this is the outer bound.
+    client_max_body_size 11m;
+    client_body_timeout 60s;
+    proxy_request_buffering off;
+    proxy_buffering off;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_read_timeout 60s;
+    proxy_send_timeout 60s;
+
+    location / {
+        set $storage http://storage:8333;
+        proxy_pass $storage;
+        limit_req zone=per_ip burst=50 nodelay;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name mail.${GRS_DOMAIN};
+
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    access_log /dev/stdout json;
+
+    location / {
+        set $mailpit http://mailpit:8025;
+        proxy_pass $mailpit;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;   # the inbox updates over a websocket
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        limit_req zone=per_ip burst=50 nodelay;
+    }
+}

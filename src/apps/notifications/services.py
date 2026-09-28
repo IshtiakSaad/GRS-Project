@@ -62,9 +62,9 @@ def notify(
 
 def _enqueue(notification: Notification) -> None:
     """Fast path only. A broker outage must not fail the user's request: the row is safe."""
+    from apps.common import broker
+
     from .tasks import deliver
 
-    try:
-        deliver.delay(notification.pk, notification.created_at.isoformat())
-    except Exception:  # noqa: BLE001 - any broker failure; the sweeper retries
-        logger.warning("enqueue failed; notification %s left for the sweeper", notification.pk)
+    if not broker.enqueue(deliver, notification.pk, notification.created_at.isoformat()):
+        logger.info("notification %s left for the sweeper", notification.pk)
