@@ -1,7 +1,7 @@
 """The outbox: a notification is a row written in the same transaction as the change it reports.
 
 If the transaction rolls back, nothing is sent; if it commits, the row exists even when Redis is
-down, and the sweeper (Phase 4) delivers it later. The broker only makes delivery fast.
+down, and the sweeper delivers it later. The broker only makes delivery fast.
 """
 
 import logging
@@ -37,6 +37,27 @@ def queue(
     )
     transaction.on_commit(lambda: _enqueue(notification))
     return notification
+
+
+def notify(
+    recipient, template: str, payload: dict, *, kind: str, request=None, expires_in=None
+) -> list[Notification]:
+    """A request update: by SMS, and also by email once the recipient has verified one."""
+    channels = [Channel.SMS]
+    if recipient.email and recipient.email_verified_at is not None:
+        channels.append(Channel.EMAIL)
+    return [
+        queue(
+            recipient,
+            template,
+            payload,
+            channel=channel,
+            kind=kind,
+            request=request,
+            expires_in=expires_in,
+        )
+        for channel in channels
+    ]
 
 
 def _enqueue(notification: Notification) -> None:

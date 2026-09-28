@@ -1,8 +1,8 @@
 """Deliver one outbox row: lease it, send it outside any transaction, record the result.
 
 The lease makes delivery safe to run twice: only the worker holding the lease token can
-complete the row, and a crashed worker's lease simply expires. Phase 4 adds the sweeper that
-re-enqueues rows the broker lost, collapse of superseded status messages and kill switches.
+complete the row, and a crashed worker's lease simply expires; the sweeper (sweeper.py) then
+hands the row to a worker again.
 """
 
 import logging

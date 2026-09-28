@@ -57,19 +57,28 @@ TEMPLATES = {
         "bn": "আবেদন {tracking_no}: অফিস থেকে নতুন বার্তা। দেখতে লগইন করুন।",
         "en": "Request {tracking_no}: a new message from the office. Log in to read it.",
     },
+    "request_overdue": {
+        "bn": "আবেদন {tracking_no}: সময়সীমা পেরিয়ে গেছে। দ্রুত ব্যবস্থা নিন।",
+        "en": "Request {tracking_no} is past its deadline. Please act on it now.",
+    },
     "request_withdrawn": {
         "bn": "আবেদন {tracking_no} প্রত্যাহার করা হয়েছে।",
         "en": "Request {tracking_no} was withdrawn.",
     },
 }
 
+SUBJECT = {"bn": "আবেদন {tracking_no}", "en": "Request {tracking_no}"}
+
 # Payloads of these templates hold a secret; it is erased once the message has gone out.
 SENSITIVE = {"otp", "verify_email"}
 
 
 def render(template: str, language: str, payload: dict) -> tuple[str, str]:
-    """(subject, body) in the recipient's language; subject is empty for SMS templates."""
+    """(subject, body) in the recipient's language. Request updates sent by email use the
+    tracking number as the subject."""
     entry = TEMPLATES[template]
     lang = language if language in ("bn", "en") else "bn"
     subject = entry.get("subject", {}).get(lang, "")
+    if not subject and "tracking_no" in payload:
+        subject = SUBJECT[lang].format(**payload)
     return subject, entry[lang].format(**payload)

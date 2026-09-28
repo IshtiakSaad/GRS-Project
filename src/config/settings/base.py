@@ -113,6 +113,16 @@ CELERY_BEAT_SCHEDULE: dict = {
         "task": "apps.collab.tasks.sweep_stuck_attachments",
         "schedule": 300.0,
     },
+    # Outbox safety net: messages the broker lost, dead workers' leases, stale status texts.
+    "sweep-notifications": {
+        "task": "apps.notifications.tasks.sweep",
+        "schedule": 30.0,
+    },
+    # Requests past their deadline are flagged once per SLA cycle; staff are told.
+    "escalate-overdue": {
+        "task": "apps.sla.tasks.escalate_overdue",
+        "schedule": 300.0,
+    },
 }
 
 # --- Internationalisation -------------------------------------------------------------------

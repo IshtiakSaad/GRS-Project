@@ -83,7 +83,7 @@ def add_comment(
                 request, "respond", user, {"message": body}, http_request=http_request
             )
         elif not citizen and not internal:
-            notifications.queue(
+            notifications.notify(
                 request.owner,
                 "request_comment",
                 {"tracking_no": request.tracking_no},
