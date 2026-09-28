@@ -61,6 +61,10 @@ TEMPLATES = {
         "bn": "আবেদন {tracking_no}: সময়সীমা পেরিয়ে গেছে। দ্রুত ব্যবস্থা নিন।",
         "en": "Request {tracking_no} is past its deadline. Please act on it now.",
     },
+    "request_reopened": {
+        "bn": "আবেদন {tracking_no}: পর্যালোচনার পর আবার খোলা হয়েছে।",
+        "en": "Request {tracking_no} was reviewed and reopened.",
+    },
     "request_withdrawn": {
         "bn": "আবেদন {tracking_no} প্রত্যাহার করা হয়েছে।",
         "en": "Request {tracking_no} was withdrawn.",

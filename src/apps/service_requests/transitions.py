@@ -6,10 +6,12 @@ work is a small function (HANDLERS). Tests walk every (state, action, actor) cel
 """
 
 import hashlib
+import random
 from dataclasses import dataclass, field
 from datetime import timedelta
 from enum import StrEnum
 
+from django.conf import settings
 from django.db import connection, transaction
 from django.db.models import Q
 from django.http import Http404
@@ -23,14 +25,14 @@ from apps.notifications.models import Kind
 from apps.sla.services import compute_due_at
 
 from . import tracking
-from .models import OPEN_STATUSES, ServiceRequest, SlaPause, Status
+from .models import OPEN_STATUSES, Review, ReviewReason, ServiceRequest, SlaPause, Status
 
 REOPEN_WINDOW = timedelta(days=30)
 MAX_INFO_REQUESTS = 2  # the database allows a third, for when an administrator approves one
 MAX_REOPENS = 2
 DUPLICATE_WINDOW = timedelta(minutes=10)
 STATUS_NOTICE_TTL = timedelta(hours=72)
-LATE_REJECTION_SHARE = 0.8  # rejections in the last 20% of the SLA window are sampled
+LATE_REJECTION_SHARE = 0.8  # rejections in the last 20% of the SLA window are all reviewed
 
 
 class Actor(StrEnum):
@@ -66,6 +68,8 @@ RULES: dict[str, Rule] = {
     "reject": _rule(OPEN_STATUSES, S.REJECTED, Actor.ASSIGNED, Actor.ADMIN),
     "withdraw": _rule(OPEN_STATUSES, S.WITHDRAWN, Actor.OWNER),
     "reopen": _rule([S.RESOLVED, S.REJECTED], S.SUBMITTED, Actor.OWNER),
+    # A review found the decision wrong: the request goes back to the queue.
+    "overturn": _rule([S.RESOLVED, S.REJECTED], S.SUBMITTED, Actor.ADMIN),
     "set_priority": _rule(
         OPEN_STATUSES, None, Actor.ASSIGNED, Actor.DEPARTMENT, Actor.ADMIN, public=False
     ),
@@ -108,6 +112,7 @@ class Change:
     event: dict = field(default_factory=dict)  # timeline data; citizens may see it
     audit: dict = field(default_factory=dict)  # extra detail for auditors only
     notices: list[tuple[User, str, str]] = field(default_factory=list)  # recipient, template, kind
+    review: str | None = None  # a ReviewReason: an administrator should check this decision
 
 
 @dataclass
@@ -249,9 +254,11 @@ def _resolve(request, ctx):
     request.resolution_note = ctx.data["note"]
     request.resolved_at = request.closed_at = ctx.now
     request.reopen_deadline = ctx.now + REOPEN_WINDOW
+    sampled = random.random() < settings.REVIEW_SAMPLE_RATE  # noqa: S311 - sampling
     return Change(
         event={"note": request.resolution_note},
         notices=[(request.owner, "request_resolved", Kind.STATUS)],
+        review=ReviewReason.SAMPLE if sampled else None,
     )
 
 
@@ -266,6 +273,7 @@ def _reject(request, ctx):
         event={"reason_code": request.rejection_reason_code, "note": request.rejection_note},
         audit={"late_rejection": late},
         notices=[(request.owner, "request_rejected", Kind.STATUS)],
+        review=ReviewReason.LATE_REJECTION if late else None,
     )
 
 
@@ -282,13 +290,26 @@ def _reopen(request, ctx):
     if request.reopen_deadline is None or ctx.now > request.reopen_deadline:
         raise _refuse("REOPEN_WINDOW_CLOSED", _("The time to reopen this request has passed."))
     request.reopen_count += 1
+    _restart(request, ctx)
+    return Change(event={"reason": ctx.data["reason"]})
+
+
+def _overturn(request, ctx):
+    _restart(request, ctx)
+    return Change(
+        event={"reason": ctx.data["reason"]},
+        notices=[(request.owner, "request_reopened", Kind.STATUS)],
+    )
+
+
+def _restart(request, ctx):
+    """Back to the queue with a new SLA cycle, as if newly submitted."""
     request.assigned_officer = None
     request.resolution_note = request.resolved_at = None
     request.rejection_reason_code = request.rejection_note = None
     request.closed_at = request.reopen_deadline = None
     request.sla_started_at = ctx.now  # a new cycle and a new deadline
     request.due_at = compute_due_at(request)
-    return Change(event={"reason": ctx.data["reason"]})
 
 
 def _set_priority(request, ctx):
@@ -310,6 +331,7 @@ HANDLERS = {
     "reject": _reject,
     "withdraw": _withdraw,
     "reopen": _reopen,
+    "overturn": _overturn,
     "set_priority": _set_priority,
 }
 
@@ -401,6 +423,10 @@ def apply(
         data={"from": before, "to": after, **change.event, **change.audit},
         http_request=http_request,
     )
+    if change.review:
+        Review.objects.create(
+            request=request, reason=change.review, decided_status=after, officer=user
+        )
     for recipient, template, kind in change.notices:
         notifications.notify(
             recipient,

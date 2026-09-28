@@ -4,6 +4,7 @@ from rest_framework import serializers
 from apps.accounts.models import Role, User
 from apps.common.fields import PhoneField, TextField
 from apps.directory.models import Category, Department, Holiday, SlaSuspension
+from apps.service_requests.models import Review, ReviewReason, ReviewStatus
 
 CODE = r"^[A-Z][A-Z0-9_]{1,29}$"
 CODE_HELP = "Upper-case letters, digits and _, starting with a letter. Never changes."
@@ -237,3 +238,62 @@ class StatsOut(serializers.Serializer):
     date_to = serializers.DateField(source="to")
     totals = _Metrics()
     groups = _GroupMetrics(many=True)
+
+
+# --- review queue -----------------------------------------------------------------------------
+
+
+class ReviewFilterIn(serializers.Serializer):
+    status = serializers.ChoiceField(ReviewStatus.choices, required=False)
+    reason = serializers.ChoiceField(ReviewReason.choices, required=False)
+    department = serializers.CharField(max_length=20, required=False)
+
+
+class ReviewRequestOut(serializers.Serializer):
+    id = serializers.UUIDField(source="public_id")
+    tracking_no = serializers.CharField()
+    status = serializers.CharField()
+    department = serializers.CharField(source="department.code")
+    category = serializers.CharField(source="category.code")
+    resolution_note = serializers.CharField(allow_null=True)
+    rejection_reason_code = serializers.CharField(allow_null=True)
+    rejection_note = serializers.CharField(allow_null=True)
+
+
+class ReviewPersonOut(serializers.Serializer):
+    id = serializers.UUIDField(source="public_id")
+    full_name = serializers.CharField()
+
+
+class ReviewOut(serializers.ModelSerializer):
+    id = serializers.UUIDField(source="public_id")
+    request = ReviewRequestOut()
+    officer = ReviewPersonOut()
+    reviewer = ReviewPersonOut(allow_null=True)
+
+    class Meta:
+        model = Review
+        fields = [
+            "id",
+            "request",
+            "reason",
+            "decided_status",
+            "officer",
+            "status",
+            "reviewer",
+            "note",
+            "reviewed_at",
+            "created_at",
+        ]
+
+
+class ReviewDecisionIn(serializers.Serializer):
+    decision = serializers.ChoiceField(["UPHOLD", "OVERTURN"])
+    note = TextField(multiline=True, max_length=2000, required=False, allow_blank=True)
+
+    def validate(self, data):
+        if data["decision"] == "OVERTURN" and len((data.get("note") or "").strip()) < 10:
+            raise serializers.ValidationError(
+                {"note": _("Say why the decision is overturned (at least 10 characters).")}
+            )
+        return data

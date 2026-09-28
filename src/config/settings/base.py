@@ -123,7 +123,15 @@ CELERY_BEAT_SCHEDULE: dict = {
         "task": "apps.sla.tasks.escalate_overdue",
         "schedule": 300.0,
     },
+    # Hash-chain new audit rows and copy the anchors out of the database.
+    "seal-audit-log": {
+        "task": "apps.audit.tasks.seal_audit_log",
+        "schedule": 60.0,
+    },
 }
+
+# Share of resolutions sent to an administrator for review. Late rejections always are.
+REVIEW_SAMPLE_RATE = env.float("REVIEW_SAMPLE_RATE", default=0.05)
 
 # --- Internationalisation -------------------------------------------------------------------
 # Timestamps are stored in UTC. Business dates (tracking-number year, working days, due dates)
@@ -187,6 +195,8 @@ S3_ACCESS_KEY = env("S3_ACCESS_KEY", default="grs-local")
 S3_SECRET_KEY = env("S3_SECRET_KEY", default="grs-local-secret")
 S3_BUCKET = env("S3_BUCKET", default="attachments")
 S3_REGION = env("S3_REGION", default="us-east-1")
+# Copies of the audit chain's anchors. In production: a write-once (Object Lock) bucket.
+S3_AUDIT_BUCKET = env("S3_AUDIT_BUCKET", default="audit-anchors")
 # Swappable: the fake flags the EICAR test file; production plugs in ClamAV behind the same API.
 ATTACHMENT_SCANNER = env("ATTACHMENT_SCANNER", default="apps.collab.scanning.EicarScanner")
 

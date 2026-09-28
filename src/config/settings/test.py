@@ -27,3 +27,4 @@ PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]  # speed on
 EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
 CELERY_TASK_ALWAYS_EAGER = False
 LOGGING["root"]["level"] = "WARNING"
+REVIEW_SAMPLE_RATE = 0.0  # deterministic; tests that need a sample set it

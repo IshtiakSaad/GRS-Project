@@ -192,3 +192,15 @@ msgstr "এই লগ শুধু নাগরিক ও নিরীক্ষ�
 #, python-format
 msgid "Too many requests. Try again in %(seconds)s seconds."
 msgstr "অনেক বেশি অনুরোধ। %(seconds)s সেকেন্ড পরে আবার চেষ্টা করুন।"
+
+msgid "This review has already been decided."
+msgstr "এই পর্যালোচনার সিদ্ধান্ত আগেই হয়ে গেছে।"
+
+msgid "You cannot review your own decision."
+msgstr "নিজের সিদ্ধান্ত নিজে পর্যালোচনা করা যায় না।"
+
+msgid "The request has changed since this decision; uphold or look again."
+msgstr "এই সিদ্ধান্তের পর আবেদনটি বদলেছে; বহাল রাখুন বা আবার দেখুন।"
+
+msgid "Say why the decision is overturned (at least 10 characters)."
+msgstr "সিদ্ধান্ত কেন বাতিল করা হচ্ছে লিখুন (অন্তত ১০ অক্ষর)।"
