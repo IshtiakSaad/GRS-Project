@@ -129,6 +129,20 @@ $C up -d && $C run --rm migrate python manage.py verify_audit
 
 The backups sit on the same server: a lost disk loses them too. Copying them off the server (and continuous WAL archiving for point-in-time recovery) is on the roadmap.
 
+## Alerts
+
+The `monitor` service sends alerts to `NTFY_URL`, a private ntfy topic (`https://ntfy.sh/<long random name>`); subscribe to the same topic in the ntfy phone app. Set it in `.env` on the server, then:
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+$C up -d monitor
+$C exec monitor python manage.py monitor --test-alert   # the phone should buzz
+$C exec monitor python manage.py monitor --once         # every check, now
+$C logs monitor | grep '"sli'                           # the indicators, one line a minute
+```
+
+For the outside check, set the repository variable `UPTIME_URL` (`https://<domain>/health/ready`) and the secret `NTFY_URL` in GitHub. Delete the variable when the server is retired, or the job will keep alerting.
+
 ## Public demo reset
 
 Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database, stored files, queues and demo email, then migrates and reseeds. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.

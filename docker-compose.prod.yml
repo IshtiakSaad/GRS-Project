@@ -36,6 +36,7 @@ services:
       GRS_DOMAIN: ${GRS_DOMAIN:?set GRS_DOMAIN in .env}
     volumes: !override
       - ./deploy/nginx/grs:/etc/nginx/grs:ro
+      - edge-logs:/var/log/grs
       - ./deploy/nginx/prod.conf.template:/etc/nginx/templates/default.conf.template:ro
       - letsencrypt:/etc/letsencrypt:ro
       - certbot-webroot:/var/www/certbot:ro
@@ -49,6 +50,13 @@ services:
         condition: service_started
       mailpit:
         condition: service_started
+
+  # Checks the public address, through TLS, as a citizen reaches it.
+  monitor:
+    environment:
+      MONITOR_SOURCE: ${GRS_DOMAIN}
+      MONITOR_READY_URL: https://${GRS_DOMAIN}/health/ready
+      MONITOR_TLS_HOST: ${GRS_DOMAIN}
 
   certbot:
     image: certbot/certbot:v4.2.0

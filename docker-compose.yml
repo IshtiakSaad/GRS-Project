@@ -162,6 +162,7 @@ services:
     volumes:
       - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./deploy/nginx/grs:/etc/nginx/grs:ro
+      - edge-logs:/var/log/grs
     ports:
       - "8080:80"
     depends_on:
@@ -170,6 +171,21 @@ services:
       api-auth:
         condition: service_healthy
     restart: unless-stopped
+
+  # Watches the service level indicators (from Nginx's access log) and the dependencies every
+  # minute; pushes alerts to NTFY_URL. Its own process, with no dependency on the broker or
+  # workers, so it still reports when they are what broke.
+  monitor:
+    <<: *app
+    environment:
+      <<: *app-env
+      DATABASE_URL: ${WORKER_DATABASE_URL}
+    command: ["python", "manage.py", "monitor"]
+    volumes:
+      - edge-logs:/var/log/grs:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
   # S3-compatible object storage for attachments, self-hosted so files stay in-country.
   storage:
@@ -209,3 +225,4 @@ volumes:
   pgdata-standby:
   storage:
   clamav-db:
+  edge-logs:

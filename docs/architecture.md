@@ -41,6 +41,7 @@ flowchart LR
 | `redis-cache` | Rate-limit counters, cache | Limits fail open; everything else continues |
 | `storage` | Citizens' files | Uploads and downloads fail; links can still be signed |
 | `clamav` | Scans every uploaded file (production; local runs use an EICAR stand-in) | New files wait unverified and are retried; none is approved unscanned |
+| `monitor` | Service levels from Nginx's log, dependency checks, alerts to a phone | No alerts; nothing else changes |
 
 ## How a submission flows
 
@@ -70,6 +71,24 @@ A category has a target in working days. Deadlines count Sunday to Thursday in D
 - **Access log**: every time staff open, change or download a request, and every list page they see. Citizens see which office and role looked (not names); admins see who.
 - **Break-glass**: opening a request outside one's department needs a reason code, and appears in a report.
 - **Review queue**: rejections near the deadline, and a sample of resolutions, go to an administrator who can uphold or overturn them.
+
+## Watching it
+
+Nginx writes every request as a JSON line; the `monitor` process reads them each minute and keeps per-minute counts for six hours. It alerts, through a private ntfy topic on a phone, when:
+
+| Alert | When |
+|---|---|
+| `availability_fast_burn` | Over 7.2% of API requests failed in the last hour and the last 5 minutes (the month's 0.5% error budget would be gone in about 2 days) |
+| `availability_slow_burn` | Over 3% failed in the last 6 hours and the last 30 minutes (gone in about 5 days) |
+| `latency` | p95 above 1 second over 15 minutes |
+| `site_down` | `/health/ready` fails through the public address and TLS |
+| `database_down` | The database does not answer |
+| `notifications_late` | A status or action message has waited over 15 minutes |
+| `attachments_stuck` | An upload has waited over 30 minutes for its scan |
+| `audit_anchors_pending` | An audit checkpoint has not been copied off the host for 10 minutes |
+| `disk_full`, `certificate_expiring` | Disk over 85%; certificate under 14 days from expiry |
+
+An alert is sent when it starts, every 2 hours while it lasts, and when it clears. A GitHub Actions job checks the public address from outside every 10 minutes, for when the whole server is down. Why this and not a metrics stack: [decision 10](decisions/0010-alerts-from-the-edge-log.md).
 
 ## Scaling path
 

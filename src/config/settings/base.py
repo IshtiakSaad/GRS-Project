@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.admin_api",
     "apps.notifications",
     "apps.audit",
+    "apps.monitoring",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -205,6 +206,16 @@ ATTACHMENT_SCANNER = env("ATTACHMENT_SCANNER", default="apps.collab.scanning.Eic
 CLAMD_HOST = env("CLAMD_HOST", default="clamav")
 CLAMD_PORT = env.int("CLAMD_PORT", default=3310)
 CLAMD_TIMEOUT = env.float("CLAMD_TIMEOUT", default=30.0)
+
+# --- Monitoring (design §18.1) -------------------------------------------------------------
+# The monitor service reads Nginx's JSON access log, checks the site and its dependencies each
+# minute, and pushes alerts to NTFY_URL (a private ntfy topic). Unset: alerts go to the log only.
+NTFY_URL = env("NTFY_URL", default="")
+MONITOR_SOURCE = env("MONITOR_SOURCE", default="local")
+MONITOR_EDGE_LOG = env("MONITOR_EDGE_LOG", default="/var/log/grs/edge.json")
+MONITOR_READY_URL = env("MONITOR_READY_URL", default="http://nginx/health/ready")
+MONITOR_DISK_PATH = env("MONITOR_DISK_PATH", default="/var/log/grs")
+MONITOR_TLS_HOST = env("MONITOR_TLS_HOST", default="")
 
 # --- API ------------------------------------------------------------------------------------
 REST_FRAMEWORK = {

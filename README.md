@@ -131,6 +131,7 @@ docker run --rm --network grs-project_default \
 - **Retries are safe.** Submission takes an `Idempotency-Key`, so a lost response on 3G never creates a second request, and a similar request within minutes gets a duplicate warning.
 - **Staff access is visible.** Every staff view, change and download is logged, and citizens can see which office looked at their request. Opening a request outside one's scope needs a stated reason (break-glass) and is reported.
 - **No file is trusted.** Every upload is scanned by ClamAV and its real type read from its bytes before anyone can download it. If the scanner is down, files wait; none is approved unscanned.
+- **Problems reach a person.** Availability and latency are measured from every request Nginx serves; burn-rate alerts, stuck messages, stuck uploads, disk and certificate problems go to a phone, and an outside check covers the server going dark.
 - **Personal data stays home.** SMS and email carry only a tracking number and a status; files are stored on self-hosted object storage.
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit, and [docs/decisions/](docs/decisions/) for why.
@@ -166,7 +167,7 @@ The chaos run found a real problem first: with the broker down, each submission 
 | In-app notification inbox; collapsing repeated status texts | Table columns and indexes exist |
 | Phone number change; two-person rule for sensitive admin actions | Not started |
 | Several SMS providers with failover; public anonymised statistics | One provider interface; admin statistics only |
-| Point-in-time recovery (WAL archiving), zero-downtime deploys, alerts on service levels | Nightly dumps; deploys roll back on failure; structured logs with request IDs |
+| Point-in-time recovery (WAL archiving), zero-downtime deploys | Nightly dumps; deploys roll back on failure |
 
 ---
 

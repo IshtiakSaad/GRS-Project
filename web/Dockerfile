@@ -12,3 +12,6 @@ RUN npm run build
 
 FROM nginx:1.30-alpine
 COPY --from=build /web/out /usr/share/nginx/html
+# The access log the monitor reads, on a volume shared with it; kept small by this script.
+RUN mkdir -p /var/log/grs
+COPY --chmod=755 rotate-edge-log.sh /docker-entrypoint.d/40-rotate-edge-log.sh

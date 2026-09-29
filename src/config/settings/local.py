@@ -6,3 +6,5 @@ from .base import *
 # JSON error envelope, so local behaviour would differ from production.
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+# The monitor checks readiness through Nginx by its service name (production uses the domain).
+ALLOWED_HOSTS += ["nginx"]
