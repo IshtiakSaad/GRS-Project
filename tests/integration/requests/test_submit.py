@@ -52,7 +52,7 @@ def test_submit_numbers_times_and_announces_the_request(as_user):
         Kind.STATUS,
         c.owner.pk,
     )
-    assert sms.payload == {"tracking_no": number}  # no names or descriptions leave (D1)
+    assert sms.payload == {"tracking_no": number}  # no names or descriptions leave (decision 12)
 
 
 def test_the_deadline_skips_holidays_and_suspensions(as_user):
@@ -228,7 +228,7 @@ def test_an_old_twin_is_not_a_duplicate(as_user):
 
 
 def test_an_unverified_phone_may_submit_one_request(as_user):
-    """Degraded registration (design §7.1): if SMS is down, a citizen can still file once."""
+    """Degraded registration: if SMS is down, a citizen can still file once."""
     c = cast()
     citizen = factories.citizen()  # phone not verified
     api = as_user(citizen)

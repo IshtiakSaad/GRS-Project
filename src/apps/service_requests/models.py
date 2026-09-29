@@ -47,7 +47,7 @@ class RejectionReason(models.TextChoices):
 
 class ServiceRequest(models.Model):
     """A citizen's request. Not partitioned: hot queries use partial indexes over open requests,
-    which stay small however much history accumulates (Phase 2 plan, DB-2)."""
+    which stay small however much history accumulates."""
 
     public_id = models.UUIDField(default=uuid7, unique=True, editable=False)
     tracking_no = models.CharField(max_length=13, unique=True, null=True, blank=True)

@@ -1,5 +1,5 @@
 """Request payloads. Three views of a request: the owner's, staff's, and the short list rows
-staff see (design §7.5: tracking number, category, status, priority, due date, initials)."""
+staff see (tracking number, category, status, priority, due date, initials)."""
 
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
@@ -163,8 +163,8 @@ class _Officer(serializers.Serializer):
 
 
 class RequestOut(serializers.ModelSerializer):
-    """The owner's view. The handling officer is shown as a role and office, never a name
-    (design §7.5): decisions are the office's, and officers are not exposed to pressure."""
+    """The owner's view. The handling officer is shown as a role and office, never a name:
+    decisions are the office's, and officers are not exposed to pressure."""
 
     id = serializers.UUIDField(source="public_id")
     category = _Category()
@@ -239,7 +239,7 @@ class RequestRowOut(serializers.ModelSerializer):
 
 
 class StaffRowOut(serializers.ModelSerializer):
-    """A row of a staff list: enough to choose what to open, nothing personal (design §7.5)."""
+    """A row of a staff list: enough to choose what to open, nothing personal."""
 
     id = serializers.UUIDField(source="public_id")
     category = serializers.CharField(source="category.code")

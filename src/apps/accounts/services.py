@@ -462,7 +462,7 @@ def verify_email(token) -> None:
 
 
 def create_admin(phone: str, full_name: str, password: str) -> tuple[User, str, list[str]]:
-    """Used by the createadmin management command on the host (design §4.2)."""
+    """Used by the createadmin management command on the host."""
     check_password_rules(password, phone, full_name)
     with transaction.atomic():
         user = User(phone=phone, full_name=full_name, role=Role.ADMIN)

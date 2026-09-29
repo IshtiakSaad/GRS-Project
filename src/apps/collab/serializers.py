@@ -28,7 +28,7 @@ class _Author(serializers.Serializer):
 
 
 class CommentOut(serializers.ModelSerializer):
-    """Citizens see who wrote a staff comment as a role and office, never a name (design §7.5)."""
+    """Citizens see who wrote a staff comment as a role and office, never a name."""
 
     id = serializers.UUIDField(source="public_id")
     internal = serializers.BooleanField(source="is_internal")

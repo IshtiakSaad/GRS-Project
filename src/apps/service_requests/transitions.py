@@ -1,4 +1,4 @@
-"""The only way a submitted request changes (design §5.2, rule R3).
+"""The only way a submitted request changes.
 
 One transaction per change: lock the row → check who and from which state → change it →
 timeline event → audit row → notifications. The rules are data (RULES); each action's own
@@ -91,7 +91,7 @@ def actors_of(user: User, request: ServiceRequest) -> set[Actor]:
 
 
 def visible_to(user: User):
-    """Requests a user may see (design §7.5). Anything else is answered with 404, so staff
+    """Requests a user may see. Anything else is answered with 404, so staff
     cannot learn that a request exists outside their scope. Drafts are the owner's alone."""
     requests = ServiceRequest.objects.all()
     if user.role == Role.CITIZEN:

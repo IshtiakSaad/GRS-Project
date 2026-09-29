@@ -1,4 +1,4 @@
-"""Create an administrator, on the host only (design §4.2: no API can create the first admin).
+"""Create an administrator, on the host only (no API can create the first admin).
 
     docker compose run --rm migrate python manage.py createadmin --phone 01000000001 --name "…"
 

@@ -1,4 +1,4 @@
-"""Working-day deadlines (design §5.3). Pure functions: no database, no clock.
+"""Working-day deadlines. Pure functions: no database, no clock.
 
 A deadline is the end of the Nth working day after the day the clock started, in Bangladesh
 time. The start day never counts, whatever the hour: a request filed at 16:55 on a Sunday has

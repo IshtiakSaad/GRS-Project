@@ -1,4 +1,4 @@
-"""Comments and attachments (design §13, E5). Scope is the request's: whoever may see a request
+"""Comments and attachments. Scope is the request's: whoever may see a request
 may see its comments and files, except that citizens never see internal comments."""
 
 import logging

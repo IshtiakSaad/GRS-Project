@@ -1,7 +1,7 @@
-"""Administration (design §8.2, E8). Every change is audited with what it was before.
+"""Administration. Every change is audited with what it was before.
 
-Holidays, suspensions and a category's target days are inputs to every open deadline
-(design §5.3), so changing them schedules a recompute of the open requests they affect.
+Holidays, suspensions and a category's target days are inputs to every open deadline,
+so changing them schedules a recompute of the open requests they affect.
 """
 
 import logging

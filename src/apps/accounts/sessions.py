@@ -1,4 +1,4 @@
-"""Refresh sessions (design §7.2).
+"""Refresh sessions.
 
 A refresh token is 256 random bits; only its SHA-256 is stored. Each use rotates it. The chain
 of tokens from one login is a family; presenting a token that was already rotated means it was

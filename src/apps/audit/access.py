@@ -1,4 +1,4 @@
-"""Who among staff looked at which request (design §7.5).
+"""Who among staff looked at which request.
 
 - Opening, changing or downloading from a request: one event each.
 - A list page: one LIST event naming every request it showed, so bulk browsing is visible to

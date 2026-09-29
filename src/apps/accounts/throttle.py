@@ -1,4 +1,4 @@
-"""Progressive delay after failed logins, per account and device (design §7.3).
+"""Progressive delay after failed logins, per account and device.
 
 After 5 failures the next attempt must wait 1 minute, then 2, 4, 8, capped at 15. No hard
 lockout: a delay slows guessing to a crawl, while a lockout would let anyone lock an officer

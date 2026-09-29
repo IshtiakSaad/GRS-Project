@@ -1,4 +1,4 @@
-"""Service level indicators from Nginx's access log (design §18.1).
+"""Service level indicators from Nginx's access log.
 
 Nginx writes one JSON line per request to a shared log file. The monitor reads new lines every
 minute and folds them into per-minute buckets: request count, server errors, and a latency

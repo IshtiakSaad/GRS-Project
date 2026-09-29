@@ -1,6 +1,6 @@
 """Every (state, action, actor) cell, through the HTTP API.
 
-The expected answers are written out from design §5.2 and §7.5 here, independently of the
+The expected answers are written out from the rules here, independently of the
 engine's own RULES table, so a wrong rule in the engine cannot also be a wrong expectation.
 """
 

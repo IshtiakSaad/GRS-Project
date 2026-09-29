@@ -189,9 +189,9 @@ EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@grs.example.com")
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="http://localhost:8080")
 
-# --- Attachments (design §13) -----------------------------------------------------------------
+# --- Attachments -------------------------------------------------------------------------------
 # Files never pass through the app servers: clients upload to and download from the object
-# store with short-lived presigned URLs. The store is self-hosted, in-country (decision D1).
+# store with short-lived presigned URLs. The store is self-hosted, in-country (decision 12).
 # The API reaches it at S3_ENDPOINT; URLs handed to clients use S3_PUBLIC_ENDPOINT.
 S3_ENDPOINT = env("S3_ENDPOINT", default="http://storage:8333")
 S3_PUBLIC_ENDPOINT = env("S3_PUBLIC_ENDPOINT", default="http://localhost:8333")
@@ -220,7 +220,7 @@ CLAMD_HOST = env("CLAMD_HOST", default="clamav")
 CLAMD_PORT = env.int("CLAMD_PORT", default=3310)
 CLAMD_TIMEOUT = env.float("CLAMD_TIMEOUT", default=30.0)
 
-# --- Monitoring (design §18.1) -------------------------------------------------------------
+# --- Monitoring --------------------------------------------------------------------------------
 # The monitor service reads Nginx's JSON access log, checks the site and its dependencies each
 # minute, and pushes alerts to NTFY_URL (a private ntfy topic). Unset: alerts go to the log only.
 NTFY_URL = env("NTFY_URL", default="")

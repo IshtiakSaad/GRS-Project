@@ -1,4 +1,4 @@
-"""Transparency: who looked at a request (design §7.5, E7.4) and the break-glass report."""
+"""Transparency: who looked at a request and the break-glass report."""
 
 from datetime import timedelta
 

@@ -32,7 +32,7 @@ class UserManager(BaseUserManager):
 
 
 class User(AbstractBaseUser):
-    """One account is one person with their own phone number (stakeholder decision D3)."""
+    """One account is one person with their own phone number (decision 13)."""
 
     public_id = models.UUIDField(default=uuid7, unique=True, editable=False)
     phone = models.CharField(max_length=16, unique=True)
