@@ -1,4 +1,7 @@
 import { createHmac } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, type Page } from "@playwright/test";
 
 export const PASSWORD = process.env.E2E_DEMO_PASSWORD ?? "demo-password-2026";
@@ -25,16 +28,26 @@ function codeAt(secret: string, counter: number): string {
   return String(value % 1_000_000).padStart(6, "0");
 }
 
-let lastCounter = 0;
+// The last step used, kept on disk: Playwright starts a fresh worker process after a failure,
+// and a counter held in memory would then hand out a code the API has already accepted.
+const LAST_STEP_FILE = join(tmpdir(), "grs-e2e-totp-step");
+
+function lastStep(): number {
+  try {
+    return Number(readFileSync(LAST_STEP_FILE, "utf8")) || 0;
+  } catch {
+    return 0;
+  }
+}
 
 /** A code the API has not seen: a used code is refused (replay protection), so wait for the next step. */
 export async function freshTotp(secret: string): Promise<string> {
   let counter = Math.floor(Date.now() / 30_000);
-  while (counter <= lastCounter) {
+  while (counter <= lastStep()) {
     await new Promise((r) => setTimeout(r, 1000));
     counter = Math.floor(Date.now() / 30_000);
   }
-  lastCounter = counter;
+  writeFileSync(LAST_STEP_FILE, String(counter));
   return codeAt(secret, counter);
 }
 

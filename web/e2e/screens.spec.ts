@@ -38,3 +38,26 @@ test("a citizen cannot open staff screens", async ({ page }) => {
   await page.goto("/admin/");
   await expect(page.getByText("This page is not for your account.")).toBeVisible();
 });
+
+test("a rate-limited or failing account check does not sign anyone out", async ({ page }) => {
+  await login(page, "01000000101");
+  let refused = 0;
+  await page.route("**/api/v1/me", async (route) => {
+    // The first two checks after the reload are refused, as a busy server or limiter would.
+    if (refused < 2) {
+      refused += 1;
+      const status = refused === 1 ? 429 : 503;
+      await route.fulfill({
+        status,
+        headers: { "Retry-After": "1", "Content-Type": "application/json" },
+        body: JSON.stringify({ error: { code: "RATE_LIMITED", message: "" } }),
+      });
+      return;
+    }
+    await route.continue();
+  });
+  await page.goto("/requests/");
+  await expect(page.getByRole("heading", { name: "My requests" })).toBeVisible({ timeout: 20_000 });
+  await expect(page).toHaveURL(/\/requests\/$/);
+  expect(refused).toBe(2);
+});

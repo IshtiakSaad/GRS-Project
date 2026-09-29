@@ -37,7 +37,7 @@ function ReviewCard({ review, onDecided }: { review: Review; onDecided: () => vo
     <Card className="space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
-          <Link href={viewHref(r.id)} className="font-medium text-brand-700 underline">
+          <Link href={viewHref(r.id)} prefetch={false} className="font-medium text-brand-700 underline">
             {num(r.tracking_no)}
           </Link>
           <p className="text-xs text-slate-500">
