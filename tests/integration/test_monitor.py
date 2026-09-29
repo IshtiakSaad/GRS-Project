@@ -123,7 +123,10 @@ def test_one_pass_reports_every_check(http_server, tmp_path, capsys):
         "disk_full",
     ):
         assert name in out
-    assert "FIRING" not in out
+    # WAL archiving reflects the real server this runs against (in CI's test job nothing creates
+    # the bucket, so it rightly fires); every other check is about this test's own state.
+    firing = [line for line in out.splitlines() if line.startswith("FIRING")]
+    assert [line for line in firing if "wal_archiving" not in line] == []
 
 
 def test_wal_archiving_reports_what_postgresql_says():
