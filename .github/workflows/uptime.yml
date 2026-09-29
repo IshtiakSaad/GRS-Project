@@ -1,0 +1,33 @@
+name: Uptime
+
+# The monitor runs on the server, so it cannot report the server itself going dark. This checks
+# the public address from outside, every 10 minutes, and alerts through the same ntfy topic.
+# Off unless the repository variable UPTIME_URL is set; the topic is the secret NTFY_URL.
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    if: vars.UPTIME_URL != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - name: Ready from outside
+        env:
+          URL: ${{ vars.UPTIME_URL }}
+          NTFY_URL: ${{ secrets.NTFY_URL }}
+        run: |
+          for attempt in 1 2 3; do
+            if curl -fsS --max-time 10 "$URL" > /dev/null; then exit 0; fi
+            sleep 20
+          done
+          echo "::error::$URL failed three checks"
+          if [ -n "$NTFY_URL" ]; then
+            curl -fsS -H "Title: site unreachable from outside" -H "Priority: urgent" \
+              -H "Tags: rotating_light" -d "$URL failed 3 checks from GitHub Actions" "$NTFY_URL"
+          fi
+          exit 1
