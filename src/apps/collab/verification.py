@@ -1,7 +1,7 @@
 """Verify one uploaded file (design §13.2). Runs in the worker, never in a web request.
 
-Checks, in order: something was uploaded; its real size is the declared size; its first bytes
-are an allowed type and the declared one; the scanner finds nothing. Only then READY. A file
+Checks, in order: something was uploaded; its real size is the declared size; the scanner finds
+nothing; its first bytes are an allowed type and the declared one. Only then READY. A file
 that fails is REJECTED and deleted from the store: it can never be downloaded.
 """
 
@@ -36,28 +36,34 @@ def _inspect(attachment: Attachment) -> dict:
         raise Rejected("SIZE_MISMATCH")
 
     digest, scanner, head, total = hashlib.sha256(), new_scanner(), b"", 0
-    for chunk in storage.chunks(attachment.storage_key):
-        total += len(chunk)
-        if total > MAX_ATTACHMENT_BYTES:
-            raise Rejected("SIZE_MISMATCH")  # changed since the size check
-        if len(head) < SNIFF_BYTES:
-            head += chunk[: SNIFF_BYTES - len(head)]
-        digest.update(chunk)
-        scanner.feed(chunk)
+    try:
+        for chunk in storage.chunks(attachment.storage_key):
+            total += len(chunk)
+            if total > MAX_ATTACHMENT_BYTES:
+                raise Rejected("SIZE_MISMATCH")  # changed since the size check
+            if len(head) < SNIFF_BYTES:
+                head += chunk[: SNIFF_BYTES - len(head)]
+            digest.update(chunk)
+            scanner.feed(chunk)
 
-    detected = detect_type(head)
-    if detected is None or detected != attachment.declared_content_type:
-        raise Rejected("TYPE_MISMATCH")
-    threat = scanner.verdict()
+        # The verdict comes first: malware disguised as a document is reported as malware.
+        # ScannerUnavailable propagates: the file stays VERIFYING and the task retries.
+        threat = scanner.verdict()
+    finally:
+        scanner.close()
     if threat is not None:
         logger.warning("attachment %s rejected by scanner: %s", attachment.pk, threat)
         raise Rejected("MALWARE")
+    detected = detect_type(head)
+    if detected is None or detected != attachment.declared_content_type:
+        raise Rejected("TYPE_MISMATCH")
     return {"size_bytes": total, "sha256": digest.hexdigest(), "detected_content_type": detected}
 
 
 def verify(attachment_id: int) -> str:
     """Returns the resulting status, or "skipped" if the file is not waiting for verification.
-    Storage errors propagate, so the task retries; the file stays VERIFYING meanwhile."""
+    Storage and scanner errors propagate, so the task retries; the file stays VERIFYING
+    meanwhile and can never be downloaded."""
     attachment = Attachment.objects.filter(
         pk=attachment_id, status=AttachmentStatus.VERIFYING
     ).first()

@@ -14,5 +14,5 @@ The API returns a short-lived signed URL; the phone uploads directly to S3-compa
 
 - Web workers never carry file bytes; Nginx only proxies the storage host.
 - A file is unavailable for a few seconds after upload while it is checked.
-- The demo scanner only detects the EICAR test file. ClamAV fits behind the same interface (roadmap).
+- Production scans with ClamAV (clamd, signatures updated every 2 hours), streamed from storage so the file is never held in memory. If ClamAV is down the file waits unverified and is retried; it is never approved without a scan. Locally a stand-in flags the EICAR test file, as ClamAV does, so the stack runs without ClamAV's 1.5 GB of memory.
 - The storage speaks only the S3 API, so it can be replaced without code changes.

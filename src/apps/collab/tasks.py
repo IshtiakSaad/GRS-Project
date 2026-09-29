@@ -2,10 +2,11 @@ from botocore.exceptions import BotoCoreError, ClientError
 from celery import shared_task
 
 from . import verification
+from .scanning import ScannerUnavailable
 
 
 @shared_task(
-    autoretry_for=(BotoCoreError, ClientError),
+    autoretry_for=(BotoCoreError, ClientError, ScannerUnavailable),
     retry_backoff=30,
     retry_backoff_max=600,
     retry_jitter=True,

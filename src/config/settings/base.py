@@ -200,8 +200,11 @@ S3_BUCKET = env("S3_BUCKET", default="attachments")
 S3_REGION = env("S3_REGION", default="us-east-1")
 # Copies of the audit chain's anchors. In production: a write-once (Object Lock) bucket.
 S3_AUDIT_BUCKET = env("S3_AUDIT_BUCKET", default="audit-anchors")
-# Swappable: the fake flags the EICAR test file; production plugs in ClamAV behind the same API.
+# Swappable: the fake flags the EICAR test file; production uses ClamAV (clamd over TCP).
 ATTACHMENT_SCANNER = env("ATTACHMENT_SCANNER", default="apps.collab.scanning.EicarScanner")
+CLAMD_HOST = env("CLAMD_HOST", default="clamav")
+CLAMD_PORT = env.int("CLAMD_PORT", default=3310)
+CLAMD_TIMEOUT = env.float("CLAMD_TIMEOUT", default=30.0)
 
 # --- API ------------------------------------------------------------------------------------
 REST_FRAMEWORK = {

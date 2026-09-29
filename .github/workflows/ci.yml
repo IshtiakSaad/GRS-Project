@@ -102,6 +102,21 @@ jobs:
       - if: failure()
         run: docker compose logs --no-color postgres storage
 
+  # The ClamAV client against the real ClamAV image with current signatures, as production runs
+  # it: the test file must be found and a clean file must pass.
+  clamav:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: cp .env.example .env
+      - run: docker compose --profile full up -d --wait --wait-timeout 480 clamav
+      - run: docker build -q --target test -t grs-app:test .
+      - run: >
+          docker run --rm --network grs-project_default -e CLAMD_LIVE_HOST=clamav
+          grs-app:test pytest -q -p no:cacheprovider --no-cov tests/unit/test_clamd.py
+      - if: failure()
+        run: docker compose logs --no-color --tail 100 clamav
+
   # Boots the real stack the way a reviewer would, then checks that Nginx serves the build
   # that was just made. The same check guards production deploys.
   smoke:

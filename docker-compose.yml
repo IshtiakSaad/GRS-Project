@@ -185,6 +185,18 @@ services:
       - "127.0.0.1:8333:8333"
     restart: unless-stopped
 
+  # Malware scanner for attachments: clamd, with freshclam updating signatures every 2 hours.
+  # About 1.5 GB of memory once its database is loaded, so locally it is opt-in:
+  #   docker compose --profile full up -d   (and ATTACHMENT_SCANNER=apps.collab.scanning.ClamdScanner)
+  # Without it the worker uses the EICAR stand-in. Production always runs it.
+  clamav:
+    profiles: ["full"]
+    image: clamav/clamav:1.5.4
+    volumes:
+      - clamav-db:/var/lib/clamav
+    mem_limit: 3g
+    restart: unless-stopped
+
   # Catches outgoing email locally; web inbox at http://localhost:8025.
   mailpit:
     image: axllent/mailpit:v1.27
@@ -196,3 +208,4 @@ volumes:
   pgdata:
   pgdata-standby:
   storage:
+  clamav-db:
