@@ -14,6 +14,7 @@ export const messages = {
   "app.loading": ["Loading…", "লোড হচ্ছে…"],
   "app.notFound": ["This page does not exist.", "এই পাতাটি নেই।"],
   "app.home": ["Home", "হোম"],
+  "app.retry": ["Try again", "আবার চেষ্টা করুন"],
   "app.notAllowed": ["This page is not for your account.", "এই পাতা আপনার অ্যাকাউন্টের জন্য নয়।"],
 
   // --- navigation --------------------------------------------------------------------------

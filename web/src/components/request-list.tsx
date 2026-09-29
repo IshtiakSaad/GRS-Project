@@ -46,8 +46,11 @@ export function RequestList({
           const late = isOverdue(r.due_at, OPEN_STATUSES.includes(r.status));
           return (
             <li key={r.id}>
+              {/* No prefetch: a list of 50 would fetch 50 pages up front, costing a 2G phone
+                  its data and a shared carrier address its request budget. */}
               <Link
                 href={viewHref(r.id)}
+                prefetch={false}
                 className="block rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:ring-brand-600"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">

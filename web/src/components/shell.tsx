@@ -7,7 +7,7 @@ import { homeFor, useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import type { Key } from "@/lib/messages";
 import type { Role } from "@/lib/types";
-import { ButtonLink, Loading, Notice } from "./ui";
+import { Button, ButtonLink, ErrorNotice, Loading, Notice } from "./ui";
 
 export const DEMO = process.env.NEXT_PUBLIC_DEMO !== "false";
 
@@ -135,7 +135,7 @@ function isActive(pathname: string, href: string) {
 
 /** Renders children only for a logged-in user with one of `roles`; otherwise sends them to log in. */
 export function Guard({ roles, children }: { roles?: Role[]; children: React.ReactNode }) {
-  const { state, me } = useAuth();
+  const { state, me, reload } = useAuth();
   const { t } = useI18n();
   const router = useRouter();
 
@@ -146,6 +146,14 @@ export function Guard({ roles, children }: { roles?: Role[]; children: React.Rea
     }
   }, [state.status, router]);
 
+  if (state.status === "error") {
+    return (
+      <div className="space-y-4">
+        <ErrorNotice error={state.error} />
+        <Button onClick={() => reload()}>{t("app.retry")}</Button>
+      </div>
+    );
+  }
   if (!me) return <Loading />;
   if (roles && !roles.includes(me.role)) {
     return (

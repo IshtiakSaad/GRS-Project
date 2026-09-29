@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import {
+  ApiError,
   endSession,
   get,
   hasSession,
@@ -13,7 +14,17 @@ import {
 } from "./api";
 import type { Me, Role, Tokens } from "./types";
 
-type State = { status: "loading" } | { status: "anon" } | { status: "in"; me: Me };
+type State =
+  | { status: "loading" }
+  | { status: "anon" }
+  | { status: "in"; me: Me }
+  // Signed in, but the account could not be loaded (rate limit, outage, no connection). The
+  // tokens are kept: this is not a logout.
+  | { status: "error"; error: unknown };
+
+const LOAD_ATTEMPTS = 4;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 interface Auth {
   state: State;
@@ -35,14 +46,28 @@ export function homeFor(role: Role): string {
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<State>({ status: "loading" });
 
+  // Only a refused session signs the person out (the API layer ends it on those 401s). A 429,
+  // a server error or a dropped connection is retried, honouring Retry-After, then shown as
+  // an error with the session intact.
   const load = useCallback(async () => {
-    try {
-      const me = await get<Me>("me");
-      setState({ status: "in", me });
-      return me;
-    } catch {
-      setState({ status: "anon" });
-      return null;
+    setState((s) => (s.status === "error" ? { status: "loading" } : s));
+    for (let attempt = 1; ; attempt++) {
+      try {
+        const me = await get<Me>("me");
+        setState({ status: "in", me });
+        return me;
+      } catch (err) {
+        if ((err instanceof ApiError && err.status === 401) || !hasSession()) {
+          setState({ status: "anon" });
+          return null;
+        }
+        if (attempt >= LOAD_ATTEMPTS) {
+          setState({ status: "error", error: err });
+          return null;
+        }
+        const wait = err instanceof ApiError && err.retryAfter ? err.retryAfter : 2 ** attempt;
+        await sleep(Math.min(wait, 10) * 1000);
+      }
     }
   }, []);
 
