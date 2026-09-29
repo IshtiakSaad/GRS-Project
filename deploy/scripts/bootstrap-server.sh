@@ -58,8 +58,9 @@ echo "== cron: nightly backup and demo reset (Asia/Dhaka night = UTC evening)"
 mkdir -p /var/backups/grs && chown "$APP_USER" /var/backups/grs
 cat > /etc/cron.d/grs <<CRON
 SHELL=/bin/bash
-# 02:00 Dhaka: back up, then check the backup restores.
-0 20 * * * $APP_USER cd $APP_DIR && deploy/scripts/backup.sh >> /var/log/grs-backup.log 2>&1 && deploy/scripts/restore-check.sh >> /var/log/grs-backup.log 2>&1
+# 02:00 Dhaka: back up, then prove both kinds restore (the dump, and point-in-time recovery
+# from the off-host archive alone).
+0 20 * * * $APP_USER cd $APP_DIR && deploy/scripts/backup.sh >> /var/log/grs-backup.log 2>&1 && deploy/scripts/restore-check.sh >> /var/log/grs-backup.log 2>&1 && deploy/scripts/pitr-check.sh >> /var/log/grs-backup.log 2>&1
 # 03:00 Dhaka: wipe and reseed the public demo.
 0 21 * * * $APP_USER cd $APP_DIR && deploy/scripts/reset-demo.sh >> /var/log/grs-reset.log 2>&1
 CRON

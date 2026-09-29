@@ -132,6 +132,7 @@ docker run --rm --network grs-project_default \
 - **Staff access is visible.** Every staff view, change and download is logged, and citizens can see which office looked at their request. Opening a request outside one's scope needs a stated reason (break-glass) and is reported.
 - **No file is trusted.** Every upload is scanned by ClamAV and its real type read from its bytes before anyone can download it. If the scanner is down, files wait; none is approved unscanned.
 - **Problems reach a person.** Availability and latency are measured from every request Nginx serves; burn-rate alerts, stuck messages, stuck uploads, disk and certificate problems go to a phone, and an outside check covers the server going dark.
+- **A lost server loses about a minute.** The database streams its changes to a write-once bucket on another system every minute; each night, and on every push in CI, a drill restores from that bucket alone and checks the result. Audit checkpoints sit in the same locked storage, so even root on the server cannot rewrite history unnoticed.
 - **Personal data stays home.** SMS and email carry only a tracking number and a status; files are stored on self-hosted object storage.
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit, and [docs/decisions/](docs/decisions/) for why.
@@ -149,6 +150,7 @@ AWS `m7i-flex.large` (2 vCPU, 8 GB), Mumbai, 28 September 2026. Load generated o
 | Task broker stopped for 30 s under load | Submissions p95 **32 ms**, **0 of 401** failed, **401 of 401** notifications delivered after restart |
 | One address hammering login | 10/s plus a burst of 40 reach the app; the rest get a JSON `429` with `Retry-After` |
 | Nightly backup | Restores with identical counts; the restored audit chain verifies (4,887 rows) |
+| Point-in-time recovery (nightly and in CI) | Restored from the off-host bucket alone to a named moment; counts match and the audit chain verifies against its locked copies |
 
 The chaos run found a real problem first: with the broker down, each submission waited on it and requests queued for up to 20 seconds. The circuit breaker in `apps/common/broker.py` is the fix.
 
@@ -156,18 +158,17 @@ The chaos run found a real problem first: with the broker down, each submission 
 
 ## Built, and on the roadmap
 
-**Built beyond the assignment:** SMS phone verification, admin two-step login with recovery codes, device trust modes, refresh grace window for lost responses, working-day SLA with pauses and suspensions, overdue escalation, review queue, idempotent submit, duplicate warning, staff access log and break-glass, hash-chained audit, a warm database standby (opt-in), health-checked deploys with rollback, nightly backup with a verified restore.
+**Built beyond the assignment:** SMS phone verification, admin two-step login with recovery codes, device trust modes, refresh grace window for lost responses, working-day SLA with pauses and suspensions, overdue escalation, review queue, idempotent submit, duplicate warning, staff access log and break-glass, hash-chained audit, a warm database standby (opt-in), health-checked deploys with rollback, continuous backups off the server with a nightly point-in-time recovery drill, audit checkpoints in write-once storage on another system.
 
 | Roadmap | Status today |
 |---|---|
 | Offline drafts and a lighter first load for 2G | The web app works on phones; drafts need a connection |
 | Assisted submission (an officer files for a citizen, who confirms) | Schema, constraints and anomaly indexes exist; the endpoint refuses it for now |
 | Image re-encoding (strips hidden content and metadata from photos) | Files are scanned by ClamAV; images are stored as uploaded |
-| Write-once audit anchors on a separate host | Anchors are copied to object storage on the same host |
 | In-app notification inbox; collapsing repeated status texts | Table columns and indexes exist |
 | Phone number change; two-person rule for sensitive admin actions | Not started |
 | Several SMS providers with failover; public anonymised statistics | One provider interface; admin statistics only |
-| Point-in-time recovery (WAL archiving), zero-downtime deploys | Nightly dumps; deploys roll back on failure |
+| Zero-downtime deploys | Deploys roll back on failure |
 
 ---
 

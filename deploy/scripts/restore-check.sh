@@ -29,6 +29,6 @@ echo "requests/audit rows/users  live=$LIVE  restored=$COPY  (live may have grow
 # The restored audit chain must still verify: same code, pointed at the copy.
 $COMPOSE run --rm --no-deps -T \
   -e DATABASE_URL="postgres://$POSTGRES_USER:$POSTGRES_PASSWORD@postgres:5432/$SCRATCH" \
-  migrate python manage.py verify_audit
+  migrate python manage.py verify_audit --restored-copy
 
 echo "$(date -u +%FT%TZ) restore check ok: $FILE"

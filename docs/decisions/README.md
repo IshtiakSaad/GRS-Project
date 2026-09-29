@@ -14,3 +14,4 @@ Short records of the choices that shape the system: the context, what was decide
 | 8 | [One server with Docker Compose, not Kubernetes](0008-one-server-with-compose.md) |
 | 9 | [The web app is static files served by the same Nginx](0009-static-web-app.md) |
 | 10 | [Service levels are measured from Nginx's log, and alerts go to a phone](0010-alerts-from-the-edge-log.md) |
+| 11 | [Backups are continuous and leave the server](0011-continuous-backups-off-the-server.md) |

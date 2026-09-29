@@ -115,19 +115,55 @@ The script builds, runs migrations, restarts, and waits until `/health/ready` re
 
 ## Backups
 
-Nightly at 02:00 Dhaka (cron from `bootstrap-server.sh`): `deploy/scripts/backup.sh` writes a `pg_dump` to `/var/backups/grs` and keeps 7 days, then `deploy/scripts/restore-check.sh` restores it into a scratch database, compares row counts and verifies the audit hash chain in the copy. Log: `/var/log/grs-backup.log`.
+Two kinds, both checked every night at 02:00 Dhaka (cron from `bootstrap-server.sh`; log: `/var/log/grs-backup.log`):
 
-**Restore for real** (the service is down anyway, or data was damaged):
+- **Continuous, off the server.** PostgreSQL ships each WAL segment to the off-host bucket (`OFFSITE_S3_BUCKET`, Object Lock) at least once a minute, and `deploy/scripts/backup.sh` adds a base backup there nightly, keeping 7. `deploy/scripts/pitr-check.sh` then restores from the bucket alone, in a throwaway container, to a named point it has just marked, checks row counts and verifies the audit chain in the copy. CI runs the same drill on every push.
+- **Logical, on the server.** `backup.sh` also writes a `pg_dump` to `/var/backups/grs` (7 days); `restore-check.sh` restores it into a scratch database and checks it.
+
+The server reaches the bucket through its instance role (`grs-server`), which can add objects but not delete versions or change locks. Nothing to rotate; nothing stored on the server.
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+$C exec -u postgres postgres bash /grs/wal-g.sh backup-list          # base backups
+$C exec postgres psql -U postgres -c "SELECT * FROM pg_stat_archiver"   # WAL shipping
+```
+
+**Restore to a moment** (data was damaged at a known time, or the server is gone). On the new or cleaned server, with the same `.env`:
+
+```bash
+C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
+SYSID=<system identifier: the folder name under wal/ in the bucket>
+$C stop api api-auth worker beat monitor postgres
+$C run --rm --no-deps -e WALG_SYSTEM_ID=$SYSID --entrypoint bash postgres -c '
+  pg_isready -q -h postgres && { echo "postgres is still running: stop it first" >&2; exit 1; }
+  rm -rf /var/lib/postgresql/data/* && gosu postgres bash /grs/wal-g.sh backup-fetch "$PGDATA" LATEST &&
+  gosu postgres touch "$PGDATA/recovery.signal" &&
+  echo "restore_command = '"'"'bash /grs/wal-g.sh wal-fetch %f %p'"'"'" >> "$PGDATA/postgresql.auto.conf" &&
+  echo "recovery_target_time = '"'"'2026-09-29 10:15:00+06'"'"'" >> "$PGDATA/postgresql.auto.conf"'
+$C up -d postgres        # replays to the target, then pauses: check the data, then
+$C exec postgres psql -U postgres -c "SELECT pg_wal_replay_resume()"
+$C up -d && $C run --rm migrate python manage.py verify_audit
+```
+
+Leave out `recovery_target_time` to replay everything archived (the server was lost). Afterwards remove the recovery settings, or every later base backup carries them:
+
+```bash
+$C exec postgres psql -U postgres -c "ALTER SYSTEM RESET restore_command" -c "ALTER SYSTEM RESET recovery_target_time"
+```
+
+**From the dump instead** (quick, but only to last night):
 
 ```bash
 C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
 $C stop api api-auth worker beat
 $C exec -T postgres psql -U postgres -c "DROP DATABASE grs" -c "CREATE DATABASE grs OWNER grs_owner"
 $C exec -T postgres pg_restore -U postgres -d grs --exit-on-error < /var/backups/grs/<file>.dump
-$C up -d && $C run --rm migrate python manage.py verify_audit
+$C up -d && $C run --rm migrate python manage.py verify_audit --restored-copy
 ```
 
-The backups sit on the same server: a lost disk loses them too. Copying them off the server (and continuous WAL archiving for point-in-time recovery) is on the roadmap.
+## Audit checkpoints
+
+`manage.py verify_audit` checks the audit chain against the locked copies in the off-host bucket (`anchors/<chain id>/`); it fails if the bucket cannot be read. `--local-only` checks against the database's own anchors (weaker: whoever can rewrite the rows can rewrite those too). `--restored-copy` is for a restored backup, which legitimately ends before the newest copies.
 
 ## Alerts
 
