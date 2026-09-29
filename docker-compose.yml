@@ -126,7 +126,7 @@ services:
         condition: service_healthy
 
   # Creates the off-host bucket (versioned, Object Lock) if missing, or checks the existing one.
-  # One-shot and nothing waits on it: an unreachable store must not stop the site.
+  # One-shot; it only warns if the store is unreachable, which must not stop the site.
   offsite-init:
     <<: *app
     command: ["python", "manage.py", "ensure_offsite_bucket"]
@@ -162,6 +162,8 @@ services:
     depends_on:
       <<: *app-deps
       migrate:
+        condition: service_completed_successfully
+      offsite-init:  # it stores the audit anchors; offsite-init never fails the start
         condition: service_completed_successfully
 
   beat:
