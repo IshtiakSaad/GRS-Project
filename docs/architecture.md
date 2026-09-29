@@ -88,6 +88,7 @@ Nginx writes every request as a JSON line; the `monitor` process reads them each
 | `notifications_late` | A status or action message has waited over 15 minutes |
 | `attachments_stuck` | An upload has waited over 30 minutes for its scan |
 | `audit_anchors_pending` | An audit checkpoint has not been copied off the host for 10 minutes |
+| `wal_archiving` | PostgreSQL cannot ship WAL to the off-host bucket (the minute-level recovery point is at risk and WAL piles up on disk) |
 | `disk_full`, `certificate_expiring` | Disk over 85%; certificate under 14 days from expiry |
 
 An alert is sent when it starts, every 2 hours while it lasts, and when it clears. A GitHub Actions job checks the public address from outside every 10 minutes, for when the whole server is down. Why this and not a metrics stack: [decision 10](decisions/0010-alerts-from-the-edge-log.md).

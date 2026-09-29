@@ -119,7 +119,14 @@ def test_one_pass_reports_every_check(http_server, tmp_path, capsys):
         "notifications_late",
         "attachments_stuck",
         "audit_anchors_pending",
+        "wal_archiving",
         "disk_full",
     ):
         assert name in out
     assert "FIRING" not in out
+
+
+def test_wal_archiving_reports_what_postgresql_says():
+    finding = checks.wal_archiving(timezone.now())
+    assert finding.name == "wal_archiving"
+    assert "WAL" in finding.summary
