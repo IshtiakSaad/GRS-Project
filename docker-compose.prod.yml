@@ -4,6 +4,7 @@
 # - prod settings come from .env (DJANGO_SETTINGS_MODULE=config.settings.prod)
 # - no database, Redis or storage port is published; only Nginx listens, on 80 and 443
 # - Nginx terminates TLS; certbot renews the certificate
+# - attachments are scanned by ClamAV, not the EICAR stand-in
 
 services:
   postgres:
@@ -22,6 +23,13 @@ services:
 
   mailpit:
     ports: !reset []
+
+  clamav:
+    profiles: !reset []
+
+  worker:
+    environment:
+      ATTACHMENT_SCANNER: apps.collab.scanning.ClamdScanner
 
   nginx:
     environment:

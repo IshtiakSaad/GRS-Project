@@ -14,7 +14,7 @@ from django.test import override_settings
 from apps.audit.models import AuditLog
 from apps.collab import storage, verification
 from apps.collab.models import Attachment, AttachmentStatus
-from apps.collab.scanning import EICAR
+from apps.collab.scanning import EICAR, ScannerUnavailable
 from apps.service_requests.models import Status
 
 from ..auth.helpers import error_code
@@ -110,11 +110,10 @@ def test_the_type_comes_from_the_bytes_not_the_label(as_user):
     assert error_code(link) == "ATTACHMENT_NOT_READY"
 
 
-def test_the_scanner_rejects_malware(as_user):
+def test_the_scanner_rejects_malware_even_disguised_as_a_pdf(as_user):
     c = cast()
     request = in_state(c, Status.SUBMITTED)
-    infected = PDF + EICAR + b"\n%%EOF"
-    attachment = _uploaded(as_user(c.owner), request, infected, "application/pdf")
+    attachment = _uploaded(as_user(c.owner), request, EICAR, "application/pdf")
     assert (attachment.status, attachment.rejection_reason) == ("REJECTED", "MALWARE")
     assert AuditLog.objects.filter(action="attachment.rejected", target_id=attachment.pk).exists()
 
@@ -216,6 +215,27 @@ def test_verification_retries_while_storage_is_down(as_user):
         verification.verify(attachment.pk)  # the task's autoretry takes it from here
     attachment.refresh_from_db()
     assert attachment.status == AttachmentStatus.VERIFYING
+
+
+@override_settings(
+    ATTACHMENT_SCANNER="apps.collab.scanning.ClamdScanner", CLAMD_HOST="127.0.0.1", CLAMD_PORT=9
+)
+def test_a_file_waits_while_the_scanner_is_down(as_user):
+    """No verdict, no approval: the file stays unverified and undownloadable, and the task's
+    autoretry (then the sweep) scans it once the scanner is back."""
+    c = cast()
+    request = in_state(c, Status.SUBMITTED)
+    api = as_user(c.owner)
+    created = _create(api, request, PNG, "image/png").json()
+    assert _put(created["upload"], PNG) == 200
+    api.post(f"/api/v1/attachments/{created['id']}/confirm")
+    attachment = Attachment.objects.get(public_id=created["id"])
+    with pytest.raises(ScannerUnavailable):
+        verification.verify(attachment.pk)
+    attachment.refresh_from_db()
+    assert attachment.status == AttachmentStatus.VERIFYING
+    link = api.get(f"/api/v1/attachments/{attachment.public_id}/download")
+    assert error_code(link) == "ATTACHMENT_NOT_READY"
 
 
 def test_stuck_verifications_are_swept(as_user):

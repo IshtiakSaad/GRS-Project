@@ -90,7 +90,7 @@ docker run --rm --network grs-project_default \
 | Status | 8 states; every (state, action, role) combination is a table row, and database constraints reject impossible rows | `service_requests/transitions.py` | `requests/test_transition_matrix.py` (every cell), `db/test_constraints.py` |
 | Officer assignment | Officers take the next request in priority order (`SKIP LOCKED`, so two officers never get the same one); admins can assign and reassign | `service_requests/services.py` | `requests/test_queue.py` |
 | Comments | Public or internal (citizens never see internal notes, and see staff by role, not name) | `apps/collab/` | `collab/test_comments.py` |
-| File attachment | Direct upload to object storage by signed URL; the server checks size, real file type and a virus-scanner interface before the file can be downloaded | `collab/storage.py`, `verification.py` | `collab/test_attachments.py`, `unit/test_scanning.py` |
+| File attachment | Direct upload to object storage by signed URL; the server checks size, scans it with ClamAV and checks the real file type before the file can be downloaded | `collab/storage.py`, `verification.py`, `scanning.py` | `collab/test_attachments.py`, `unit/test_scanning.py`, `unit/test_clamd.py` (also against real ClamAV in CI) |
 | Manage categories | Admin CRUD for departments, categories, holidays and SLA suspensions; changes recompute open deadlines | `apps/admin_api/` | `admin/test_directory.py` |
 | Assign officers | Create officers (they set their own password by SMS), deactivate, assign | `admin_api/services.py` | `admin/test_users.py`, `requests/test_actions.py` |
 | View all requests | Admin list with filters (status, category, department, officer, overdue), keyset pagination | `service_requests/views.py` | `requests/test_drafts_and_scope.py` |
@@ -130,6 +130,7 @@ docker run --rm --network grs-project_default \
 - **Deadlines are honest.** Working days in Dhaka time, holidays, suspensions, and pauses while the office waits on the citizen. Late requests are escalated; late rejections and a sample of resolutions go to a review queue.
 - **Retries are safe.** Submission takes an `Idempotency-Key`, so a lost response on 3G never creates a second request, and a similar request within minutes gets a duplicate warning.
 - **Staff access is visible.** Every staff view, change and download is logged, and citizens can see which office looked at their request. Opening a request outside one's scope needs a stated reason (break-glass) and is reported.
+- **No file is trusted.** Every upload is scanned by ClamAV and its real type read from its bytes before anyone can download it. If the scanner is down, files wait; none is approved unscanned.
 - **Personal data stays home.** SMS and email carry only a tracking number and a status; files are stored on self-hosted object storage.
 
 See [docs/architecture.md](docs/architecture.md) for how the pieces fit, and [docs/decisions/](docs/decisions/) for why.
@@ -160,7 +161,7 @@ The chaos run found a real problem first: with the broker down, each submission 
 |---|---|
 | Offline drafts and a lighter first load for 2G | The web app works on phones; drafts need a connection |
 | Assisted submission (an officer files for a citizen, who confirms) | Schema, constraints and anomaly indexes exist; the endpoint refuses it for now |
-| Real virus scanning (ClamAV) and image re-encoding | Scanner interface in place; the demo detects the EICAR test file |
+| Image re-encoding (strips hidden content and metadata from photos) | Files are scanned by ClamAV; images are stored as uploaded |
 | Write-once audit anchors on a separate host | Anchors are copied to object storage on the same host |
 | In-app notification inbox; collapsing repeated status texts | Table columns and indexes exist |
 | Phone number change; two-person rule for sensitive admin actions | Not started |

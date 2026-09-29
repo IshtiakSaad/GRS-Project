@@ -20,6 +20,7 @@ flowchart LR
   beat[beat<br/>schedules] --> broker
   worker --> pg
   worker --> files
+  worker --> clam[clamav<br/>malware scan]
   worker --> sms[SMS provider]
   worker --> mail[SMTP]
 
@@ -39,6 +40,7 @@ flowchart LR
 | `redis-broker` | Task queue | Web requests continue; sweepers deliver after restart |
 | `redis-cache` | Rate-limit counters, cache | Limits fail open; everything else continues |
 | `storage` | Citizens' files | Uploads and downloads fail; links can still be signed |
+| `clamav` | Scans every uploaded file (production; local runs use an EICAR stand-in) | New files wait unverified and are retried; none is approved unscanned |
 
 ## How a submission flows
 
