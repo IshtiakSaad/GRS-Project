@@ -142,6 +142,12 @@ jobs:
           curl -sf http://localhost:8080/ | grep -q '<html'
           curl -sf http://localhost:8080/login/ | grep -q '<html'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nope/)" = 404
+      # The drill production runs nightly: base backup to the off-host bucket, then restore to
+      # a named point from the bucket alone, and verify counts and the audit chain.
+      - name: Point-in-time recovery from the off-host archive
+        run: |
+          docker compose exec -T -u postgres postgres bash /grs/wal-g.sh backup-push
+          deploy/scripts/pitr-check.sh
       - if: failure()
         run: docker compose logs --no-color
       - if: always()

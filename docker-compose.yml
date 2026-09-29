@@ -29,6 +29,17 @@ x-web-healthcheck: &web-healthcheck
   retries: 3
   start_period: 15s
 
+# Where PostgreSQL ships its WAL archive and base backups (deploy/postgres/wal-g.sh). Locally a
+# bucket on the storage container; production: AWS S3 through the instance role (empty
+# endpoint and keys in .env).
+x-offsite-env: &offsite-env
+  OFFSITE_S3_BUCKET: ${OFFSITE_S3_BUCKET:-offsite}
+  OFFSITE_S3_ENDPOINT: ${OFFSITE_S3_ENDPOINT-http://storage:8333}
+  OFFSITE_S3_REGION: ${OFFSITE_S3_REGION:-us-east-1}
+  OFFSITE_S3_ACCESS_KEY: ${OFFSITE_S3_ACCESS_KEY-grs-local}
+  OFFSITE_S3_SECRET_KEY: ${OFFSITE_S3_SECRET_KEY-grs-local-secret}
+  WAL_ARCHIVE: ${WAL_ARCHIVE:-on}
+
 services:
   # Source of truth for everything. Settings: deploy/postgres/conf.d/grs.conf.
   postgres:
@@ -45,6 +56,7 @@ services:
       GRS_WORKER_PASSWORD: ${GRS_WORKER_PASSWORD}
       GRS_REPLICATOR_PASSWORD: ${GRS_REPLICATOR_PASSWORD}
       GRS_DEV_CREATEDB: "1"  # local only: lets tests create their database as grs_owner
+      <<: *offsite-env
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./deploy/postgres/conf.d:/etc/postgresql/conf.d:ro
@@ -69,6 +81,7 @@ services:
     image: grs-postgres:17
     command: ["bash", "/grs/standby.sh"]
     environment:
+      <<: *offsite-env  # used only if promoted: it then archives like the primary did
       PGDATA: /var/lib/postgresql/data
       GRS_REPLICATOR_PASSWORD: ${GRS_REPLICATOR_PASSWORD}
     volumes:
@@ -112,6 +125,16 @@ services:
       postgres:
         condition: service_healthy
 
+  # Creates the off-host bucket (versioned, Object Lock) if missing, or checks the existing one.
+  # One-shot; it only warns if the store is unreachable, which must not stop the site.
+  offsite-init:
+    <<: *app
+    command: ["python", "manage.py", "ensure_offsite_bucket"]
+    restart: "no"
+    depends_on:
+      storage:
+        condition: service_started
+
   api:
     <<: *app
     depends_on:
@@ -139,6 +162,8 @@ services:
     depends_on:
       <<: *app-deps
       migrate:
+        condition: service_completed_successfully
+      offsite-init:  # it stores the audit anchors; offsite-init never fails the start
         condition: service_completed_successfully
 
   beat:
@@ -190,7 +215,9 @@ services:
   # S3-compatible object storage for attachments, self-hosted so files stay in-country.
   storage:
     image: chrislusf/seaweedfs:4.47
-    command: ["mini", "-dir=/data"]
+    # No bucket appears on first upload: the off-host bucket must be created with Object Lock
+    # (offsite-init), never implicitly without it.
+    command: ["mini", "-dir=/data", "-s3.autoCreateBucket=false"]
     environment:
       AWS_ACCESS_KEY_ID: ${S3_ACCESS_KEY:-grs-local}
       AWS_SECRET_ACCESS_KEY: ${S3_SECRET_KEY:-grs-local-secret}

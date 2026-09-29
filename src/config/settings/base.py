@@ -199,8 +199,21 @@ S3_ACCESS_KEY = env("S3_ACCESS_KEY", default="grs-local")
 S3_SECRET_KEY = env("S3_SECRET_KEY", default="grs-local-secret")
 S3_BUCKET = env("S3_BUCKET", default="attachments")
 S3_REGION = env("S3_REGION", default="us-east-1")
-# Copies of the audit chain's anchors. In production: a write-once (Object Lock) bucket.
-S3_AUDIT_BUCKET = env("S3_AUDIT_BUCKET", default="audit-anchors")
+
+# --- Off-host store (audit anchors; PostgreSQL's WAL archive and base backups) ----------------
+# A versioned, Object Lock bucket on another system. Production: AWS S3 with an empty endpoint
+# and empty keys, so credentials come from the server's instance role. Locally: a bucket on the
+# SeaweedFS container. See apps/audit/offsite.py.
+OFFSITE_S3_BUCKET = env("OFFSITE_S3_BUCKET", default="offsite")
+OFFSITE_S3_ENDPOINT = env("OFFSITE_S3_ENDPOINT", default=S3_ENDPOINT)
+OFFSITE_S3_REGION = env("OFFSITE_S3_REGION", default="us-east-1")
+OFFSITE_S3_ACCESS_KEY = env("OFFSITE_S3_ACCESS_KEY", default=S3_ACCESS_KEY)
+OFFSITE_S3_SECRET_KEY = env("OFFSITE_S3_SECRET_KEY", default=S3_SECRET_KEY)
+# How long each audit anchor is locked. GOVERNANCE: only an account holder with a separate
+# bypass permission can remove it early; COMPLIANCE: nobody can, which a real deployment should
+# use, for years. The demo uses GOVERNANCE for days so the account can be closed afterwards.
+OFFSITE_LOCK_MODE = env("OFFSITE_LOCK_MODE", default="GOVERNANCE")
+OFFSITE_LOCK_DAYS = env.int("OFFSITE_LOCK_DAYS", default=1)
 # Swappable: the fake flags the EICAR test file; production uses ClamAV (clamd over TCP).
 ATTACHMENT_SCANNER = env("ATTACHMENT_SCANNER", default="apps.collab.scanning.EicarScanner")
 CLAMD_HOST = env("CLAMD_HOST", default="clamav")

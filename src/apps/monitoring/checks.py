@@ -147,6 +147,24 @@ def pending_anchors(now: datetime) -> Finding:
     )
 
 
+def wal_archiving(now: datetime) -> Finding:
+    """PostgreSQL shipping WAL off the host. While it fails, segments pile up on this disk and
+    the minute-level recovery point is lost; PostgreSQL retries, so this clears on its own."""
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT last_archived_time, last_failed_time, last_failed_wal FROM pg_stat_archiver"
+        )
+        archived, failed, failed_wal = cursor.fetchone()
+    failing = failed is not None and (archived is None or failed > archived)
+    if failing:
+        summary = f"WAL archiving failing since {_span(now - failed)} ago (segment {failed_wal})"
+    elif archived is None:
+        summary = "no WAL archived yet"
+    else:
+        summary = f"last WAL segment shipped {_span(now - archived)} ago"
+    return Finding("wal_archiving", CRITICAL, failing, summary)
+
+
 def database(now: datetime) -> Finding:
     try:
         with connection.cursor() as cursor:
@@ -189,7 +207,12 @@ def run_all(recorder: Recorder) -> list[Finding]:
     db = database(now)
     findings.append(db)
     if not db.firing:
-        findings += [late_notifications(now), stuck_attachments(now), pending_anchors(now)]
+        findings += [
+            late_notifications(now),
+            stuck_attachments(now),
+            pending_anchors(now),
+            wal_archiving(now),
+        ]
     findings.append(disk(settings.MONITOR_DISK_PATH))
     if settings.MONITOR_TLS_HOST:
         findings.append(certificate(settings.MONITOR_TLS_HOST, now))

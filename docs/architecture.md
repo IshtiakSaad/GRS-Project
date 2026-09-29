@@ -25,6 +25,8 @@ flowchart LR
   worker --> mail[SMTP]
 
   standby[(PostgreSQL standby<br/>optional)] -.->|streaming| pg
+  pg -->|WAL every minute,<br/>nightly base backup| offsite[(Off-host bucket<br/>Object Lock)]
+  worker -->|audit checkpoints| offsite
 ```
 
 ## Processes
@@ -67,7 +69,7 @@ A category has a target in working days. Deadlines count Sunday to Thursday in D
 
 ## Accountability
 
-- **Audit log**: every state change and admin action, append-only. Every minute a sealer chains new rows with SHA-256 and stores a checkpoint in object storage. `manage.py verify_audit` walks the chain; the nightly restore check runs it on the restored copy.
+- **Audit log**: every state change and admin action, append-only. Every minute a sealer chains new rows with SHA-256 and copies a checkpoint, locked, to a write-once bucket on another system. `manage.py verify_audit` checks the chain against those copies, which root on this server cannot change; the nightly restore checks run it on the restored copies.
 - **Access log**: every time staff open, change or download a request, and every list page they see. Citizens see which office and role looked (not names); admins see who.
 - **Break-glass**: opening a request outside one's department needs a reason code, and appears in a report.
 - **Review queue**: rejections near the deadline, and a sample of resolutions, go to an administrator who can uphold or overturn them.
@@ -86,6 +88,7 @@ Nginx writes every request as a JSON line; the `monitor` process reads them each
 | `notifications_late` | A status or action message has waited over 15 minutes |
 | `attachments_stuck` | An upload has waited over 30 minutes for its scan |
 | `audit_anchors_pending` | An audit checkpoint has not been copied off the host for 10 minutes |
+| `wal_archiving` | PostgreSQL cannot ship WAL to the off-host bucket (the minute-level recovery point is at risk and WAL piles up on disk) |
 | `disk_full`, `certificate_expiring` | Disk over 85%; certificate under 14 days from expiry |
 
 An alert is sent when it starts, every 2 hours while it lasts, and when it clears. A GitHub Actions job checks the public address from outside every 10 minutes, for when the whole server is down. Why this and not a metrics stack: [decision 10](decisions/0010-alerts-from-the-edge-log.md).

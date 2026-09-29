@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Write the server's .env with fresh random secrets. Run once, on the server:
-#   deploy/scripts/gen-env.sh demo.example.org you@example.org
+#   OFFSITE_S3_BUCKET=my-locked-bucket OFFSITE_S3_REGION=ap-south-1 \
+#     deploy/scripts/gen-env.sh demo.example.org you@example.org
 # The file never leaves the server and is never committed. Refuses to overwrite.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
@@ -39,7 +40,14 @@ REDIS_CACHE_URL=redis://redis-cache:6379/0
 S3_ACCESS_KEY=grs-$(rand 8)
 S3_SECRET_KEY=$(rand)
 S3_BUCKET=attachments
-S3_AUDIT_BUCKET=audit-anchors
+# Off-host store (audit anchors, WAL archive, base backups): an S3 bucket with Object Lock on
+# another system. Empty endpoint and keys: AWS, with the instance role's credentials.
+OFFSITE_S3_BUCKET=${OFFSITE_S3_BUCKET:?set OFFSITE_S3_BUCKET (the Object Lock bucket)}
+OFFSITE_S3_REGION=${OFFSITE_S3_REGION:?set OFFSITE_S3_REGION}
+OFFSITE_S3_ENDPOINT=
+OFFSITE_S3_ACCESS_KEY=
+OFFSITE_S3_SECRET_KEY=
+OFFSITE_LOCK_DAYS=7
 S3_ENDPOINT=http://storage:8333
 S3_PUBLIC_ENDPOINT=https://files.$DOMAIN
 
