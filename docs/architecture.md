@@ -29,7 +29,7 @@ flowchart LR
   worker -->|audit checkpoints| offsite
 ```
 
-The off-host bucket is any S3 store with Object Lock on another system, reached through the server's instance role. On the public demo it is, for now, a stand-in bucket on the same server: the mechanism and the nightly drill are the same, the separation is not.
+The off-host bucket is any S3 store with Object Lock on another system, reached through the server's instance role. On the public demo it is an S3 bucket in ap-south-1. Local runs use a bucket on the SeaweedFS container, which supports the same locks.
 
 ## Processes
 
