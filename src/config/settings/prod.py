@@ -16,7 +16,9 @@ if any(marker in value for marker in _PLACEHOLDERS for value in _secrets):
 GRS_DOMAIN = env("GRS_DOMAIN")
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default=f"https://{GRS_DOMAIN}")
 # A display name: a bare no-reply address is one more thing spam filters count against a mail.
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=f"GRS <no-reply@{GRS_DOMAIN}>")
+DEFAULT_FROM_EMAIL = env(
+    "DEFAULT_FROM_EMAIL", default=f"Grievance & Service Requests <no-reply@{GRS_DOMAIN}>"
+)
 if not PUBLIC_BASE_URL.startswith("https://") or "localhost" in PUBLIC_BASE_URL:
     raise ImproperlyConfigured(f"PUBLIC_BASE_URL must be the public https URL: {PUBLIC_BASE_URL}")
 if (

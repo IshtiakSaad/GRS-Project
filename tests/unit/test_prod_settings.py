@@ -46,7 +46,7 @@ def test_links_and_sender_follow_the_domain():
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip().split("|") == [
         "https://grs.office.test",
-        "GRS <no-reply@grs.office.test>",
+        "Grievance & Service Requests <no-reply@grs.office.test>",
     ]
 
 
