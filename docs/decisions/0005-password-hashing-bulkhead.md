@@ -22,6 +22,18 @@ The same image runs twice: `api` for general traffic and `api-auth` for every ro
 - Two worker pools to size instead of one.
 - The route list exists in two places (Nginx and the code). The test keeps them in step.
 
+## What this does not stop
+
+Slow hashing can be turned against us: every login attempt costs about 23 ms of CPU, so a flood of attempts is a cheap way to spend ours. Three things keep that cost down.
+
+- Nginx allows each address 10 login attempts a second, and refuses the rest before any Python runs.
+- After five failures an account (per device) waits 1, 2, 4, 8, then 15 minutes, and the wait is checked before the password is hashed: a delayed attempt costs no CPU.
+- Whatever gets through lands on this pool alone.
+
+A botnet gets past the first two. From thousands of addresses, each under its limit, trying a different phone number each time, no account builds up a delay and every attempt is hashed, including attempts on numbers with no account, which are hashed on purpose so that timing does not reveal who is registered. Two workers at 23 ms a hash top out near 85 attempts a second (a calculation, not a measurement); above that, logging in slows or fails for everyone until the flood stops. People already logged in are not affected.
+
+The per-address limit is not tightened to close this, because thousands of real phones share one address behind a mobile operator: a tight limit would lock out a district before it slowed a botnet. What closes it is filtering in front of the server (a DDoS service such as Cloudflare or AWS Shield), and a challenge on the login form that appears only while a flood is under way. Neither is in v1: they need a provider account and a public launch to be worth their cost.
+
 ## What would change this
 
 Load where the two pools compete for the same CPUs: the next step is `api-auth` on its own host, which needs only a change to Nginx's upstream.
