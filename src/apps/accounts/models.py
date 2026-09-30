@@ -126,6 +126,7 @@ class OtpChallenge(models.Model):
         indexes = [
             models.Index(fields=["phone", "purpose", "-created_at"], name="otp_phone_purpose_idx"),
             models.Index(fields=["expires_at"], name="otp_expires_idx"),  # purge job
+            models.Index(fields=["created_at"], name="otp_created_idx"),  # hourly budget
         ]
 
 

@@ -13,7 +13,7 @@ const citizen = { phone: `0109${run}`, name: "E2E Citizen", password: `${PASSWOR
 const title = `Renew my trade licence ${run}`;
 let requestUrl = "";
 
-test("a citizen registers, confirms the number by SMS code, and logs in", async ({ page }) => {
+test("a citizen registers, confirms the number by SMS code, and is logged in", async ({ page }) => {
   await english(page);
   await page.goto("/register/");
   await page.getByLabel("Full name").fill(citizen.name);
@@ -22,12 +22,11 @@ test("a citizen registers, confirms the number by SMS code, and logs in", async 
   await page.getByRole("button", { name: "Continue" }).click();
 
   await expect(page).toHaveURL(/\/register\/verify\//);
-  await page.getByLabel("Code").fill(await smsCode(page, citizen.phone));
+  // The SMS is in the language the site was in, and the demo inbox fills the code in.
+  await expect(page.getByText("Your verification code")).toBeVisible({ timeout: 20_000 });
+  await page.getByRole("button", { name: "Use this code" }).first().click();
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByText("Number confirmed")).toBeVisible();
-
-  await page.getByLabel("Password").fill(citizen.password);
-  await page.getByRole("button", { name: "Log in" }).click();
+  // No second screen asking for the password just chosen.
   await expect(page).toHaveURL(/\/requests\/$/);
   await expect(page.getByText("You have no requests yet.")).toBeVisible();
 });

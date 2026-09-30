@@ -87,7 +87,12 @@ export const messages = {
 
   // --- auth --------------------------------------------------------------------------------
   "auth.loginTitle": ["Log in", "লগইন করুন"],
-  "auth.phoneHint": ["e.g. 01012345678", "যেমন ০১০১২৩৪৫৬৭৮"],
+  "auth.phoneHint": ["e.g. 01712345678", "যেমন ০১৭১২৩৪৫৬৭৮"],
+  // The demo refuses every real number: say so before anyone types theirs.
+  "auth.phoneHintDemo": [
+    "Demo: use any number that starts with 010, e.g. 01012345678. No real phone has one.",
+    "ডেমো: ০১০ দিয়ে শুরু যেকোনো নম্বর দিন, যেমন ০১০১২৩৪৫৬৭৮। কোনো আসল ফোনে এমন নম্বর নেই।",
+  ],
   "auth.trustPersonal": ["This is my own device: keep me logged in", "এটি আমার নিজের ডিভাইস: লগইন রাখুন"],
   "auth.trustHint": [
     "Leave unticked on a shared or public computer.",
@@ -118,7 +123,6 @@ export const messages = {
   "auth.resend": ["Send the code again", "আবার কোড পাঠান"],
   "auth.resendIn": ["Send again in {n} s", "{n} সেকেন্ড পরে আবার পাঠান"],
   "auth.sent": ["If the number can receive a code, it is on its way.", "নম্বরটি সঠিক হলে কোড পাঠানো হয়েছে।"],
-  "auth.verified": ["Number confirmed. Log in to continue.", "নম্বর নিশ্চিত হয়েছে। লগইন করে এগিয়ে যান।"],
   "auth.resetTitle": ["Reset your password", "পাসওয়ার্ড রিসেট করুন"],
   "auth.resetHint": [
     "We send a code to your number. Enter it with a new password.",
@@ -127,6 +131,12 @@ export const messages = {
   "auth.sendCode": ["Send code", "কোড পাঠান"],
   "auth.newPassword": ["New password", "নতুন পাসওয়ার্ড"],
   "auth.resetDone": ["Password changed. Log in with the new one.", "পাসওয়ার্ড বদলানো হয়েছে। নতুনটি দিয়ে লগইন করুন।"],
+  "auth.setTitle": ["Set your password", "পাসওয়ার্ড ঠিক করুন"],
+  "auth.setHint": [
+    "Enter the code from the SMS that brought you here, and choose a password.",
+    "যে এসএমএস থেকে এখানে এসেছেন তার কোডটি দিন, আর একটি পাসওয়ার্ড বেছে নিন।",
+  ],
+  "auth.setDone": ["Password set. Log in with it.", "পাসওয়ার্ড ঠিক হয়েছে। এটি দিয়ে লগইন করুন।"],
   "auth.demoCodes": [
     "Demo: SMS are not really sent. Open the demo inbox to read the code.",
     "ডেমো: এসএমএস আসলে পাঠানো হয় না। কোড দেখতে ডেমো ইনবক্স খুলুন।",
@@ -140,6 +150,7 @@ export const messages = {
   ],
   "sms.empty": ["No messages for this number.", "এই নম্বরে কোনো বার্তা নেই।"],
   "sms.show": ["Show messages", "বার্তা দেখুন"],
+  "sms.use": ["Use this code", "এই কোডটি দিন"],
 
   // --- landing -----------------------------------------------------------------------------
   "home.title": ["Government services, tracked end to end", "সরকারি সেবা, শুরু থেকে শেষ পর্যন্ত ট্র্যাক"],
@@ -456,15 +467,18 @@ export const messages = {
   "people.title": ["People", "কর্মকর্তা"],
   "people.newOfficer": ["New officer", "নতুন কর্মকর্তা"],
   "people.newOfficerHint": [
-    "They set their own password with “Forgot password” on their number.",
-    "তাঁরা নিজের নম্বরে “পাসওয়ার্ড ভুলে গেছেন” দিয়ে পাসওয়ার্ড ঠিক করবেন।",
+    "They get an SMS with a link and a code to set their own password, valid for 24 hours.",
+    "তাঁরা নিজের পাসওয়ার্ড ঠিক করার লিংক ও কোডসহ একটি এসএমএস পাবেন, ২৪ ঘণ্টা বৈধ।",
   ],
   "people.role": ["Role", "ভূমিকা"],
   "people.lastLogin": ["Last login {date}", "শেষ লগইন {date}"],
   "people.never": ["Never logged in", "কখনো লগইন করেননি"],
   "people.noPassword": ["Password not set yet", "পাসওয়ার্ড এখনও ঠিক হয়নি"],
   "people.resetPassword": ["Reset password", "পাসওয়ার্ড রিসেট"],
-  "people.resetSent": ["Reset code sent by SMS.", "রিসেট কোড এসএমএসে পাঠানো হয়েছে।"],
+  "people.resetSent": [
+    "The old password no longer works. An SMS with a link to set a new one is on its way.",
+    "পুরোনো পাসওয়ার্ড আর চলবে না। নতুন পাসওয়ার্ড ঠিক করার লিংকসহ এসএমএস যাচ্ছে।",
+  ],
   "people.deactivate": ["Deactivate", "নিষ্ক্রিয় করুন"],
   "people.activate": ["Activate", "সক্রিয় করুন"],
   "people.searchPhone": ["Search by number", "নম্বর দিয়ে খুঁজুন"],

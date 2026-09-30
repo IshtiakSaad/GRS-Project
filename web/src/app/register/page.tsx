@@ -12,7 +12,9 @@ import type { Accepted } from "@/lib/types";
 export default function Register() {
   const { t, lang } = useI18n();
   const router = useRouter();
-  const [form, setForm] = useState({ full_name: "", phone: "", password: "", preferred_language: lang });
+  // An empty language follows the site's, which is read from storage after the first render.
+  const [form, setForm] = useState({ full_name: "", phone: "", password: "", preferred_language: "" });
+  const language = form.preferred_language || lang;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
@@ -24,7 +26,7 @@ export default function Register() {
     setBusy(true);
     setError(null);
     try {
-      const out = await post<Accepted>("auth/register", form, { auth: false });
+      const out = await post<Accepted>("auth/register", { ...form, preferred_language: language }, { auth: false });
       const q = new URLSearchParams({ phone: form.phone, wait: String(out.resend_after ?? 60) });
       router.push(`/register/verify/?${q}`);
     } catch (err) {
@@ -52,7 +54,7 @@ export default function Register() {
           />
           <TextInput
             label={t("common.phone")}
-            hint={t("auth.phoneHint")}
+            hint={t(DEMO ? "auth.phoneHintDemo" : "auth.phoneHint")}
             name="phone"
             type="tel"
             inputMode="tel"
@@ -76,7 +78,7 @@ export default function Register() {
           <Select
             label={t("auth.smsLanguage")}
             name="preferred_language"
-            value={form.preferred_language}
+            value={language}
             onChange={set("preferred_language")}
             options={[
               { value: "bn", label: "বাংলা" },

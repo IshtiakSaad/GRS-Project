@@ -116,7 +116,7 @@ docker run --rm --network grs-project_default \
 
 | Requirement | How | Where | Tests |
 |---|---|---|---|
-| JWT login / register | Phone + password; registration verifies the phone by SMS code. Access tokens last 10 minutes; refresh tokens rotate, and reusing an old one logs out every device. Session length depends on whose device it is ([decision 14](docs/decisions/0014-sessions-follow-the-device.md)) | `apps/accounts/` | `auth/test_register.py`, `test_login.py`, `test_sessions.py`, `unit/test_tokens.py` |
+| JWT login / register | Phone + password; registration verifies the phone by SMS code, and a correct code logs the citizen in. Access tokens last 10 minutes; refresh tokens rotate, and reusing an old one logs out every device. Session length depends on whose device it is ([decision 14](docs/decisions/0014-sessions-follow-the-device.md)) | `apps/accounts/` | `auth/test_register.py`, `test_login.py`, `test_sessions.py`, `unit/test_tokens.py` |
 | Roles: citizen, officer, admin | Role on the user; administrators also need a two-step (TOTP) login. Every endpoint declares its permission, and a meta-test fails if one does not | `accounts/permissions.py` | `auth/test_two_factor.py`, `meta/test_routes.py` |
 | Create / view / update requests | Drafts are edited with `If-Match` versioning; after submission only the state machine changes a request | `service_requests/` | `requests/test_drafts_and_scope.py`, `test_submit.py` |
 | Category, title, description, priority | Categories carry a service target in working days; priority can be set by staff | `directory/`, `service_requests/models.py` | `requests/test_actions.py` |
@@ -125,7 +125,7 @@ docker run --rm --network grs-project_default \
 | Comments | Public or internal. Citizens never see internal notes, and see staff by role, not name | `apps/collab/` | `collab/test_comments.py` |
 | File attachment | Direct upload to object storage by signed URL. The server checks the size, scans the file with ClamAV and reads its real type from its bytes before it can be downloaded | `collab/storage.py`, `verification.py`, `scanning.py` | `collab/test_attachments.py`, `unit/test_scanning.py`, `unit/test_clamd.py` (also against real ClamAV in CI) |
 | Manage categories | Admin CRUD for departments, categories, holidays and office closures; changes recompute the deadlines of open requests | `apps/admin_api/` | `admin/test_directory.py` |
-| Assign officers | Create officers (they set their own password by SMS), deactivate, assign | `admin_api/services.py` | `admin/test_users.py`, `requests/test_actions.py` |
+| Assign officers | Create officers (a text links them to a page that sets their own password), deactivate, assign | `admin_api/services.py` | `admin/test_users.py`, `requests/test_actions.py` |
 | View all requests | Admin list with filters (status, category, department, officer, overdue), keyset pagination | `service_requests/views.py` | `requests/test_drafts_and_scope.py` |
 | Basic statistics | Volumes, resolution times and on-time rates by department, category or officer, each shown beside the number that would reveal it being gamed | `admin_api/stats.py` | `admin/test_stats.py` |
 

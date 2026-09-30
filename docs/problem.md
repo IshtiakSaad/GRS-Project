@@ -99,7 +99,8 @@ None of this assumes bad people. It assumes ordinary pressure: targets, workload
 |---|---|---|
 | Someone with a list of phone numbers | Learn which numbers have accounts | Registering an existing number gets the same answer as a new one; the real owner gets an SMS warning (at most one an hour). Wrong password and unknown number look identical, and unknown numbers are delayed on the same schedule. |
 | Someone who dislikes an officer | Lock them out | There is no lockout, only a growing delay, and the officer's own device has its own counter. |
-| Someone guessing an SMS code | Take over a registration | 5 attempts per code, 10 minutes per code, 3 codes an hour per phone. |
+| Someone guessing an SMS code | Take over a registration | 5 attempts per code, 10 minutes per code (24 hours for a new officer's), 3 codes an hour per phone. |
+| Someone asking for codes to thousands of numbers | Run up our SMS bill, and take a share of it (SMS pumping) | An hourly budget of codes for the whole site. Past it, codes pause for everyone until the hour rolls on, and the refusal is the same whether or not the number has an account ([decision 13](decisions/0013-a-phone-number-is-the-account.md)). |
 | The next person at a shared computer | Use the last person's session | Short sessions by default; refresh tokens rotate, and presenting an old one ends every session of the account and warns the owner by SMS. |
 | Someone with a stolen admin password | Run the system | A second factor (TOTP) on every admin session; enrolling one needs a fresh login, not just a stolen token. |
 | Someone uploading a crafted file | Reach an officer's machine | Nothing is downloadable until ClamAV has scanned it and its real type has been read from its bytes. A PDF label on an executable is refused. If the scanner is down, files wait. |

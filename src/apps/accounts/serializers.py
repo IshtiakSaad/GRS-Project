@@ -21,6 +21,19 @@ class PhoneCodeIn(serializers.Serializer):
     code = serializers.CharField(max_length=16)
 
 
+class VerifyPhoneIn(PhoneCodeIn):
+    device_token = serializers.CharField(required=False, max_length=512)
+    trust_mode = serializers.ChoiceField(
+        [TrustMode.PERSONAL, TrustMode.SHARED],
+        default=TrustMode.SHARED,
+        help_text="As at login: PERSONAL only on the citizen's own phone.",
+    )
+    start_session = serializers.BooleanField(
+        default=True,
+        help_text="False when the citizen is already logged in (confirming from the profile).",
+    )
+
+
 class PhoneIn(serializers.Serializer):
     phone = PhoneField()
 

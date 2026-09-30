@@ -183,6 +183,10 @@ FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS")
 # and exposes the fake SMS inbox. Never set on a system with real citizens.
 DEMO_MODE = env.bool("DEMO_MODE", default=False)
 SMS_BACKEND = env("SMS_BACKEND", default="fake")
+# Codes by SMS, for the whole site, per hour: the limit per phone does not stop someone asking
+# for codes to thousands of numbers, each one paid for (apps/accounts/otp.py). Size it above
+# the busiest real hour; when it is reached, codes pause for everyone until the hour rolls on.
+SMS_CODES_HOURLY_CAP = env.int("SMS_CODES_HOURLY_CAP", default=300)
 
 # Email leaves through SMTP. Locally that is Mailpit, which delivers nothing and shows every
 # message at :8025; production relays through a provider (Resend on the demo) that delivers to

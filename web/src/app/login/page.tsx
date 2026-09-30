@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { safeNext } from "@/components/shell";
+import { DEMO, safeNext } from "@/components/shell";
 import { Button, Card, Checkbox, ErrorNotice, Loading, Notice, PageTitle, TextInput } from "@/components/ui";
 import { deviceToken, post, rememberDevice, type TrustMode } from "@/lib/api";
 import { homeFor, MFA_KEY, useAuth } from "@/lib/auth";
@@ -52,12 +52,12 @@ function Login() {
       <PageTitle>{t("auth.loginTitle")}</PageTitle>
       <Card>
         <form onSubmit={submit} className="space-y-4" noValidate>
-          {params.get("verified") && <Notice tone="success">{t("auth.verified")}</Notice>}
           {params.get("reset") && <Notice tone="success">{t("auth.resetDone")}</Notice>}
+          {params.get("set") && <Notice tone="success">{t("auth.setDone")}</Notice>}
           <ErrorNotice error={error} />
           <TextInput
             label={t("common.phone")}
-            hint={t("auth.phoneHint")}
+            hint={t(DEMO ? "auth.phoneHintDemo" : "auth.phoneHint")}
             name="phone"
             type="tel"
             inputMode="tel"

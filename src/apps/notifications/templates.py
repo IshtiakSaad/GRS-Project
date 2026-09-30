@@ -12,6 +12,20 @@ TEMPLATES = {
         "bn": "আপনার যাচাই কোড {code}। ১০ মিনিট বৈধ। কাউকে জানাবেন না।",
         "en": "Your verification code is {code}. Valid 10 min. Do not share it.",
     },
+    # Staff never choose a password through anyone else: the link opens a page to set one.
+    # Longer than one segment, but a new officer has nothing else to go on.
+    "staff_welcome": {
+        "bn": "GRS: আপনাকে কর্মকর্তা হিসেবে যুক্ত করা হয়েছে। পাসওয়ার্ড ঠিক করুন: {link} কোড {code}। "
+        "২৪ ঘণ্টা বৈধ। কাউকে জানাবেন না।",
+        "en": "GRS: you were added as an officer. Set your password: {link} Code {code}. "
+        "Valid 24 h. Do not share it.",
+    },
+    "staff_reset": {
+        "bn": "GRS: প্রশাসক আপনার পাসওয়ার্ড রিসেট করেছেন। নতুন পাসওয়ার্ড দিন: {link} কোড {code}। "
+        "২৪ ঘণ্টা বৈধ। কাউকে জানাবেন না।",
+        "en": "GRS: an administrator reset your password. Set a new one: {link} Code {code}. "
+        "Valid 24 h. Do not share it.",
+    },
     "register_attempt": {
         "bn": "আপনার নম্বরে নিবন্ধনের চেষ্টা হয়েছে। আপনি হলে লগইন করুন বা পাসওয়ার্ড রিসেট করুন।",
         "en": "A new account was attempted on your number. You already have one: log in, or "
@@ -87,7 +101,7 @@ TEMPLATES = {
 SUBJECT = {"bn": "আবেদন {tracking_no}", "en": "Request {tracking_no}"}
 
 # Payloads of these templates hold a secret; it is erased once the message has gone out.
-SENSITIVE = {"otp", "verify_email"}
+SENSITIVE = {"otp", "staff_welcome", "staff_reset", "verify_email"}
 
 
 def render_html(template: str, language: str, payload: dict) -> str | None:

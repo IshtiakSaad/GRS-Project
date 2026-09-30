@@ -20,7 +20,8 @@ from .models import RefreshSession
 from .permissions import IsAnyUser, IsPublic, IsStaff
 
 TAG = ["auth"]
-INVALID_INPUT = errors(authenticated=False, e400=["VALIDATION_ERROR"])
+# Routes that send a code by SMS: 429 when the site's hourly budget of codes is spent.
+SENDS_CODE = errors(authenticated=False, e400=["VALIDATION_ERROR"], e429=["RATE_LIMITED"])
 DELAYED = ["LOGIN_DELAYED"]
 SECOND_FACTOR_ERRORS = errors(
     authenticated=False,
@@ -66,7 +67,7 @@ class RegisterView(PublicView):
     @extend_schema(
         tags=TAG,
         request=serializers.RegisterIn,
-        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+        responses={202: serializers.AcceptedOut, **SENDS_CODE},
         description="The answer is the same whether or not the number already has an account.",
     )
     def post(self, request):
@@ -81,16 +82,29 @@ class VerifyPhoneView(PublicView):
 
     @extend_schema(
         tags=TAG,
-        request=serializers.PhoneCodeIn,
+        request=serializers.VerifyPhoneIn,
         responses={
+            200: serializers.LoginOut,
             204: None,
             **errors(authenticated=False, e400=["VALIDATION_ERROR", "INVALID_CODE"]),
         },
+        description="Confirms the number and logs the citizen in: the answer is the same as "
+        "a successful POST /auth/login. With `start_session: false`, 204 and no session.",
     )
     def post(self, request):
-        data = _input(serializers.PhoneCodeIn, request)
-        services.verify_phone(data["phone"], data["code"])
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        data = _input(serializers.VerifyPhoneIn, request)
+        result = services.verify_phone(
+            data["phone"],
+            data["code"],
+            device_token=data.get("device_token"),
+            trust_mode=data["trust_mode"],
+            start_session=data["start_session"],
+            user_agent=_ua(request),
+            http_request=request,
+        )
+        if result is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(result)
 
 
 class ResendCodeView(PublicView):
@@ -99,7 +113,7 @@ class ResendCodeView(PublicView):
     @extend_schema(
         tags=TAG,
         request=serializers.PhoneIn,
-        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+        responses={202: serializers.AcceptedOut, **SENDS_CODE},
     )
     def post(self, request):
         services.resend_phone_code(_input(serializers.PhoneIn, request)["phone"])
@@ -238,7 +252,7 @@ class PasswordResetRequestView(PublicView):
     @extend_schema(
         tags=TAG,
         request=serializers.PhoneIn,
-        responses={202: serializers.AcceptedOut, **INVALID_INPUT},
+        responses={202: serializers.AcceptedOut, **SENDS_CODE},
         description="Same answer for every number. Numbers unused for 180 days get no code.",
     )
     def post(self, request):

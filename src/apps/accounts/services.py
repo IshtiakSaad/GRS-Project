@@ -92,6 +92,7 @@ def read_device_token(token, user: User) -> str | None:
 def register(phone: str, password: str, full_name: str, language: str) -> None:
     """Same response and the same hashing cost whether or not the phone has an account."""
     check_password_rules(password, phone, full_name)
+    otp.check_budget()  # before the branch: a refusal must not depend on the phone
     existing = _by_phone(phone)
     if existing is None:
         try:
@@ -120,15 +121,44 @@ def _warn_existing_owner(user: User) -> None:
         notifications.queue(user, "register_attempt", {})
 
 
-def verify_phone(phone: str, code) -> None:
+def verify_phone(
+    phone: str,
+    code,
+    *,
+    device_token=None,
+    trust_mode=None,
+    start_session: bool = True,
+    user_agent: str = "",
+    http_request=None,
+) -> dict | None:
+    """Confirms the number and logs the new citizen in, as a correct password would.
+
+    The code went to this phone a few minutes after its owner chose the password, so asking for
+    the password again proves nothing more. It only costs a screen, on a slow connection.
+    """
     if not otp.verify(phone, OtpPurpose.VERIFY_PHONE, code):
         raise _invalid_code()
     User.objects.filter(phone=phone, phone_verified_at__isnull=True).update(
         phone_verified_at=timezone.now()
     )
+    if not start_session:
+        return None
+    user = User.objects.filter(phone=phone, is_active=True).first()
+    if user is None:
+        raise _invalid_code()
+    device_id = read_device_token(device_token, user) or secrets.token_hex(16)
+    return _start_login(
+        user,
+        device_id,
+        sessions.trust_mode_for(user, trust_mode),
+        user_agent,
+        http_request,
+        "auth.login_phone_verified",
+    )
 
 
 def resend_phone_code(phone: str) -> None:
+    otp.check_budget()
     user = User.objects.filter(phone=phone, phone_verified_at__isnull=True, is_active=True).first()
     if user is not None:
         otp.issue(user, OtpPurpose.VERIFY_PHONE)  # over the limit: silently nothing
@@ -169,6 +199,11 @@ def login(
 
     device_id = device_id or secrets.token_hex(16)
     mode = sessions.trust_mode_for(user, trust_mode)
+    return _start_login(user, device_id, mode, user_agent, http_request, "auth.login")
+
+
+def _start_login(user: User, device_id: str, mode, user_agent: str, http_request, action) -> dict:
+    """What follows a correct first step: a session, or the second step when two-step is on."""
     result = {"device_token": issue_device_token(user, device_id)}
     if user.totp_enabled_at is not None:
         result.update(mfa_required=True, mfa_token=tokens.issue_mfa(user, device_id, mode))
@@ -178,7 +213,7 @@ def login(
         issued = sessions.start(
             user, device_id=device_id, trust_mode=mode, mfa=False, user_agent=user_agent
         )
-        _logged_in(user, "auth.login", http_request)
+        _logged_in(user, action, http_request)
     result.update(mfa_required=False, **issued.as_dict())
     return result
 
@@ -362,6 +397,7 @@ def request_password_reset(phone: str) -> None:
     """Always answers the same. A number unused for 180 days may have been reissued by the
     operator to someone else (SIM recycling), so it gets no code: its owner must visit a help
     desk with their national ID."""
+    otp.check_budget()
     user = User.objects.filter(phone=phone, is_active=True).first()
     if user is None:
         return

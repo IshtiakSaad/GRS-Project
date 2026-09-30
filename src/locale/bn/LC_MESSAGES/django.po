@@ -210,3 +210,13 @@ msgstr "আজ এই অ্যাকাউন্ট থেকে অনেক �
 
 msgid "Verification emails are paused for today. Try again tomorrow."
 msgstr "আজকের মতো যাচাই ইমেইল পাঠানো বন্ধ আছে। আগামীকাল আবার চেষ্টা করুন।"
+
+msgid ""
+"This demo accepts only numbers that start with 010, which no real phone uses. "
+"For example 01012345678."
+msgstr ""
+"এই ডেমোতে শুধু ০১০ দিয়ে শুরু নম্বর চলে, যা কোনো আসল ফোনে নেই। "
+"যেমন 01012345678।"
+
+msgid "Codes by SMS are paused for a short while. Try again later."
+msgstr "এসএমএসে কোড পাঠানো কিছুক্ষণের জন্য বন্ধ আছে। পরে আবার চেষ্টা করুন।"

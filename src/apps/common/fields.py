@@ -11,6 +11,11 @@ from .text import clean_text
 class PhoneField(serializers.CharField):
     default_error_messages = {
         "invalid_phone": _("Enter a Bangladeshi mobile number, for example 01712345678."),
+        # Demo mode refuses every real number, so the example above would be refused too.
+        "invalid_demo_phone": _(
+            "This demo accepts only numbers that start with 010, which no real phone uses. "
+            "For example 01012345678."
+        ),
     }
 
     def __init__(self, **kwargs):
@@ -20,7 +25,7 @@ class PhoneField(serializers.CharField):
     def to_internal_value(self, data):
         phone = normalise_phone(super().to_internal_value(data))
         if phone is None:
-            self.fail("invalid_phone")
+            self.fail("invalid_demo_phone" if settings.DEMO_MODE else "invalid_phone")
         return phone
 
 

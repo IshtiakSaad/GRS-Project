@@ -6,6 +6,7 @@ so changing them schedules a recompute of the open requests they affect.
 
 import logging
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.http import Http404
 from django.utils.translation import gettext as _
@@ -249,7 +250,7 @@ def create_officer(admin: User, data: dict, http_request=None) -> User:
                 data={"role": Role.OFFICER, "department": dept.code},
                 http_request=http_request,
             )
-            otp.issue(officer, OtpPurpose.RESET_PASSWORD)
+            _send_setup_code(officer, "staff_welcome")
             return officer
     except IntegrityError as exc:
         message = _("This phone number already has an account.")
@@ -326,4 +327,18 @@ def reset_password(admin: User, public_id, http_request=None) -> None:
         audit.record(
             "admin.user.reset_password", actor=admin, target=user, http_request=http_request
         )
-        otp.issue(user, OtpPurpose.RESET_PASSWORD)
+        _send_setup_code(user, "staff_reset")
+
+
+def _send_setup_code(user: User, template: str) -> None:
+    """The SMS says what happened and links to the page that sets the password, with the phone
+    filled in: a new officer has never seen the site, and "Forgot password" is the wrong door
+    for someone who never had one."""
+    link = f"{settings.PUBLIC_BASE_URL}/set-password/?phone={user.phone.removeprefix('+88')}"
+    otp.issue(
+        user,
+        OtpPurpose.RESET_PASSWORD,
+        template=template,
+        lifetime=otp.STAFF_SETUP_LIFETIME,
+        extra={"link": link},
+    )
