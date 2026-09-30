@@ -4,6 +4,11 @@ Codes are stored as HMAC-SHA256 with a server key, not with the password hasher:
 has too little entropy for slow hashing to matter, and putting it on the hasher would add CPU
 load at the 9am peak. Guessing is bounded instead: 5 attempts per code, 10 minutes, and at most
 3 codes per hour per phone.
+
+The per-phone limit does nothing against someone who asks for codes to thousands of numbers
+(SMS pumping: each message is paid for, and some operators share the fee with the fraudster).
+A per-address limit would lock out the thousands of real phones behind one mobile operator's
+address, so the whole site has an hourly budget of codes instead (SMS_CODES_HOURLY_CAP).
 """
 
 import hmac
@@ -11,11 +16,14 @@ import re
 import secrets
 from datetime import timedelta
 
+from django.conf import settings
 from django.db import transaction
 from django.db.models.functions import Now
 from django.utils import timezone
 from django.utils.crypto import salted_hmac
+from django.utils.translation import gettext as _
 
+from apps.common.errors import AppError
 from apps.common.text import ascii_digits
 from apps.notifications import services as notifications
 
@@ -25,6 +33,8 @@ LIFETIME = timedelta(minutes=10)
 MAX_ATTEMPTS = 5
 COOLDOWN = timedelta(seconds=60)
 MAX_PER_HOUR = 3
+# A new officer may read the welcome SMS hours later; 5 attempts still bound the guessing.
+STAFF_SETUP_LIFETIME = timedelta(hours=24)
 _CODE = re.compile(r"^[0-9]{6}$")
 
 
@@ -39,8 +49,37 @@ def clean_code(raw) -> str | None:
     return code if _CODE.match(code) else None
 
 
-def issue(user: User, purpose: str) -> bool:
+def check_budget() -> None:
+    """Refuse when the site has sent its hourly budget of codes.
+
+    Called before anything depends on whether the phone has an account, so a refusal says
+    nothing about who is registered.
+    """
+    hour_ago = timezone.now() - timedelta(hours=1)
+    sent = OtpChallenge.objects.filter(created_at__gt=hour_ago)
+    if sent.count() < settings.SMS_CODES_HOURLY_CAP:
+        return
+    # The window reopens when the oldest counted code is an hour old.
+    oldest = sent.order_by("created_at").values_list("created_at", flat=True).first()
+    wait = max(1, int((oldest + timedelta(hours=1) - timezone.now()).total_seconds()))
+    raise AppError(
+        "RATE_LIMITED",
+        _("Codes by SMS are paused for a short while. Try again later."),
+        429,
+        wait=wait,
+    )
+
+
+def issue(
+    user: User,
+    purpose: str,
+    *,
+    template: str = "otp",
+    lifetime: timedelta = LIFETIME,
+    extra: dict | None = None,
+) -> bool:
     """Create a code and queue its SMS. False when the phone's sending limit is reached."""
+    check_budget()
     with transaction.atomic():
         # Serialises issuance per account, so two quick taps cannot both pass the limit.
         User.objects.select_for_update().filter(pk=user.pk).first()
@@ -58,9 +97,9 @@ def issue(user: User, purpose: str) -> bool:
             phone=user.phone,
             purpose=purpose,
             code_hmac=_digest(user.phone, purpose, code),
-            expires_at=timezone.now() + LIFETIME,
+            expires_at=timezone.now() + lifetime,
         )
-        notifications.queue(user, "otp", {"code": code}, expires_in=LIFETIME)
+        notifications.queue(user, template, {**(extra or {}), "code": code}, expires_in=lifetime)
     return True
 
 

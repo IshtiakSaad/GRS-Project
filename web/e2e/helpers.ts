@@ -91,7 +91,8 @@ export async function smsCode(page: Page, phone: string, after?: string): Promis
   await expect(async () => {
     const res = await page.request.get(`/api/v1/demo/sms/${phone}`);
     const rows = (await res.json()) as { body: string }[];
-    const match = rows[0]?.body.match(/\d{6}/) ?? rows[0]?.body.match(/[০-৯]{6}/);
+    // Whole six-digit runs only: a staff SMS carries a link with the 11-digit number in it.
+    const match = rows[0]?.body.match(/\b\d{6}\b/) ?? rows[0]?.body.match(/[০-৯]{6}/);
     expect(match).toBeTruthy();
     expect(match![0]).not.toEqual(after);
     code = match![0];

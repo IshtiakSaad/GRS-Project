@@ -10,6 +10,7 @@ import io
 
 import pytest
 from django.apps import apps
+from django.contrib.postgres.operations import AddIndexConcurrently
 from django.core.management import call_command
 from django.db import connection, migrations
 from django.db.migrations.loader import MigrationLoader
@@ -50,6 +51,9 @@ def lock_risks(migration) -> list[str]:
     risks = []
     for op in migration.operations:
         name = type(op).__name__
+        # The safe form is a subclass of the unsafe one: only the atomic flag tells them apart.
+        if isinstance(op, AddIndexConcurrently) and not migration.atomic:
+            continue
         if isinstance(op, migrations.AddIndex):
             risks.append(f"{name}: use AddIndexConcurrently in a non-atomic migration")
         elif isinstance(op, migrations.AddConstraint) and isinstance(
@@ -102,6 +106,16 @@ def test_lock_rules_catch_an_unsafe_migration():
         ]
 
     assert len(lock_risks(Unsafe("0099_unsafe", "collab"))) == 4
+
+
+def test_lock_rules_accept_an_index_built_concurrently():
+    from django.db import models
+
+    class Safe(migrations.Migration):
+        atomic = False
+        operations = [AddIndexConcurrently("comment", models.Index(fields=["body"], name="x_idx"))]
+
+    assert lock_risks(Safe("0099_safe", "collab")) == []
 
 
 @pytest.mark.django_db

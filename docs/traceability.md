@@ -10,6 +10,8 @@ Each row starts with something we found about the problem ([problem.md](problem.
 | A lost refresh response looks exactly like token theft | A 60-second grace window returns the same successor token | `accounts/sessions.py` | `test_a_retry_within_the_grace_window_gets_the_same_successor`, `test_reuse_after_the_grace_window_revokes_the_whole_family` |
 | Many citizens file from shared computers | Short sessions unless the citizen says the phone is theirs ([decision 14](decisions/0014-sessions-follow-the-device.md)) | `accounts/sessions.py` | `test_citizen_sessions_are_short_on_shared_devices_unless_the_phone_is_theirs` |
 | A slow upload would hold a web worker for minutes | Files go straight to storage by signed URL ([decision 7](decisions/0007-uploads-go-straight-to-storage.md)) | `collab/storage.py` | `test_upload_check_and_download`, `test_upload_links_work_while_storage_is_down` |
+| On a slow connection every extra screen is a chance to give up | A correct SMS code logs the new citizen in; no second screen for the password just chosen | `accounts/services.py` | `test_the_right_code_logs_the_new_citizen_in`, `test_confirming_from_the_profile_opens_no_second_session` |
+| Each SMS is paid for, and a script can ask for codes to thousands of numbers | An hourly budget of codes for the whole site, checked before the number is looked up | `accounts/otp.py` | `test_codes_pause_for_everyone_when_the_site_budget_is_spent` |
 | Thousands of phones share one address behind carrier NAT | Generous per-address limits at Nginx; the real limits are per phone and per account | `deploy/nginx/grs/http.conf`, `common/ratelimit.py` | `test_login_is_limited_per_phone`, `test_submitting_is_limited_per_user`; the live edge check ([loadtest](../loadtest/README.md)) |
 
 ## Language and numbers
@@ -20,6 +22,7 @@ Each row starts with something we found about the problem ([problem.md](problem.
 | Citizens type Bangla digits, spaces, no dashes | Input is normalised before it is checked | `common/text.py`, `common/phone.py` | `test_parse_accepts_bangla_digits_spaces_and_missing_dashes`, `test_demo_number_in_any_common_form` |
 | The same Bangla word can be typed as different code points | NFC normalisation, keeping the joiners Bangla needs | `common/text.py` | `test_clean_text_makes_equal_bangla_equal`, `test_clean_text_drops_control_characters_but_keeps_bangla_joiners` |
 | Messages must be in the citizen's language | Texts are Bangla first; each account keeps its language | `notifications/templates.py` | `test_messages_follow_the_language_the_citizen_registered_in` |
+| A new officer has never seen the site | The welcome text says what happened and links to the page that sets the password; the code lasts a day | `admin_api/services.py` | `test_the_welcome_sms_says_what_happened_and_where_to_go` |
 
 ## The office
 

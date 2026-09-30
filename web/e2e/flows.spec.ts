@@ -4,7 +4,7 @@
 // resolution goes to the review queue.
 
 import { expect, test, type Page } from "@playwright/test";
-import { english, login, loginAdmin, PASSWORD, smsCode, TRADE_OFFICER } from "./helpers";
+import { english, login, loginAdmin, logout, PASSWORD, smsCode, TRADE_OFFICER } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -48,7 +48,7 @@ test("a citizen signs up for these flows", async ({ page }) => {
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByLabel("Code").fill(await smsCode(page, CITIZEN));
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByText("Number confirmed")).toBeVisible();
+  await expect(page).toHaveURL(/\/requests\/$/);
 });
 
 test("a draft is saved, edited and discarded", async ({ page }) => {
@@ -179,7 +179,8 @@ test("a new citizen resets a forgotten password, then edits the profile", async 
   const first = await smsCode(page, phone);
   await page.getByLabel("Code").fill(first);
   await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page.getByText("Number confirmed")).toBeVisible();
+  await expect(page).toHaveURL(/\/requests\/$/);
+  await logout(page);
 
   await page.goto("/forgot/");
   await page.getByLabel("Mobile number").fill(phone);
@@ -233,11 +234,41 @@ test("the administrator adds an officer, sends a reset code, deactivates and rea
   const row = page.locator("li").filter({ hasText: name });
   await expect(row).toContainText("Password not set yet");
   await row.getByRole("button", { name: "Reset password" }).click();
-  await expect(row.getByText("Reset code sent by SMS.")).toBeVisible();
+  await expect(row.getByText("An SMS with a link to set a new one is on its way.")).toBeVisible();
   await row.getByRole("button", { name: "Deactivate" }).click();
   await expect(row.getByRole("button", { name: "Activate" })).toBeVisible();
   await row.getByRole("button", { name: "Activate" }).click();
   await expect(row.getByRole("button", { name: "Deactivate" })).toBeVisible();
+});
+
+test("a new officer follows the link in the welcome SMS, sets a password and is in", async ({ page }) => {
+  const phone = `0105${run}0`;
+  await loginAdmin(page);
+  await page.goto("/admin/people/");
+  await page.getByLabel("Full name").fill(`E2E Newcomer ${run}`);
+  await page.getByLabel("Mobile number").first().fill(phone);
+  await page.getByLabel("Department").selectOption("TRADE");
+  await page.getByRole("button", { name: "Add" }).click();
+  await expect(page.getByText(`E2E Newcomer ${run}`)).toBeVisible();
+  await logout(page);
+
+  // What the officer reads: what happened, and a link with the number already in it.
+  let link = "";
+  await expect(async () => {
+    const rows = (await (await page.request.get(`/api/v1/demo/sms/${phone}`)).json()) as { body: string }[];
+    link = rows[0]?.body.match(/\/set-password\/\?phone=\d+/)?.[0] ?? "";
+    expect(link).toContain(phone);
+  }).toPass({ timeout: 20_000 });
+  await english(page);
+  await page.goto(link);
+  await expect(page.getByRole("heading", { name: "Set your password" })).toBeVisible();
+  await page.getByRole("button", { name: "Use this code" }).first().click();
+  await page.getByLabel("New password").fill(`${PASSWORD}-officer`);
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Password set. Log in with it.")).toBeVisible();
+
+  await login(page, phone, `${PASSWORD}-officer`);
+  await expect(page).toHaveURL(/\/officer\/$/);
 });
 
 test("the administrator edits the directory: department, service, holiday, suspension", async ({ page }) => {

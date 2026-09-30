@@ -1,12 +1,15 @@
+from datetime import timedelta
+
 import pytest
 
+from apps.accounts import otp
 from apps.accounts.models import OtpChallenge, RefreshSession, Role, User
 from apps.audit.models import AuditLog
-from apps.notifications.models import Notification
+from apps.notifications.models import DemoSms, Notification
 from apps.service_requests.models import Status
 from tests import factories
 
-from ..auth.helpers import error_code
+from ..auth.helpers import deliver_all, error_code
 from ..requests.helpers import cast, in_state
 
 pytestmark = pytest.mark.django_db
@@ -31,7 +34,7 @@ def test_an_officer_is_created_without_a_password_and_sets_their_own(as_user, ap
     assert AuditLog.objects.filter(action="admin.user.create", target_id=officer.pk).exists()
 
     # The code went to the officer's own phone; only they can set the password.
-    code = Notification.objects.get(recipient=officer, template="otp").payload["code"]
+    code = Notification.objects.get(recipient=officer, template="staff_welcome").payload["code"]
     api.credentials()
     confirmed = api.post(
         "/api/v1/auth/password/reset/confirm",
@@ -118,6 +121,23 @@ def test_a_staff_password_reset_ends_sessions_and_sends_a_code(as_user):
     assert not c.assigned.has_usable_password()
     assert not RefreshSession.objects.filter(user=c.assigned, revoked_at__isnull=True).exists()
     assert OtpChallenge.objects.filter(phone=c.assigned.phone, purpose="RESET_PASSWORD").exists()
+    sms = Notification.objects.get(recipient=c.assigned, template="staff_reset")
+    assert "/set-password/?phone=0" in sms.payload["link"]
+
+
+def test_the_welcome_sms_says_what_happened_and_where_to_go(as_user, settings):
+    """A new officer has never seen the site: the SMS names the role, links to the page that
+    sets the password, and gives them a day to get to it."""
+    settings.PUBLIC_BASE_URL = "https://grs.office.test"
+    c = cast()
+    _new_officer(as_user(c.admin), c.category.department.code, phone="01099999777")
+    deliver_all()
+    body = DemoSms.objects.get(phone="+8801099999777").body
+    assert "https://grs.office.test/set-password/?phone=01099999777" in body
+    assert "কর্মকর্তা" in body  # "officer", in the default language
+    challenge = OtpChallenge.objects.get(phone="+8801099999777")
+    lifetime = challenge.expires_at - challenge.created_at
+    assert timedelta(hours=23) < lifetime <= otp.STAFF_SETUP_LIFETIME
 
 
 def test_citizens_reset_their_own_passwords(as_user):
