@@ -8,9 +8,29 @@ The real system lives in the details around it. The citizen is on a shared phone
 
 Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Redis · Celery · Nginx · Docker Compose · Next.js (static export) · Playwright · ClamAV · WAL-G
 
+```mermaid
+flowchart LR
+  people([Citizen · Officer · Administrator<br/>phone or shared computer]) -->|HTTPS| nginx[Nginx<br/>TLS, rate limits,<br/>web app files]
+  nginx -->|password routes| auth[api-auth<br/>Argon2id pool]
+  nginx -->|everything else| api[api<br/>Django REST]
+  people -.->|signed upload| files[(Object storage<br/>files stay in-country)]
+  api --> pg[(PostgreSQL 17<br/>constraints, triggers,<br/>hash-chained audit log)]
+  auth --> pg
+  api -->|outbox fast path| broker[(Redis broker)]
+  broker --> worker[Celery worker]
+  worker --> pg
+  worker -->|scan every file| clam[ClamAV]
+  worker -->|codes and status only| out[SMS · email]
+  pg -->|WAL every minute,<br/>restore drilled nightly| s3[(Off-host bucket<br/>Object Lock)]
+  worker -->|audit checkpoints, locked| s3
+```
+
+One server, one Compose file; every part can move to its own host without code changes. [21 more diagrams](docs/diagrams.md), from the request state machine to the audit chain and the nightly restore drill.
+
 | | |
 |---|---|
-| Tests | 1,081 backend tests (unit, integration against real PostgreSQL, meta-tests), 96% line coverage. 25 Playwright tests on a phone-sized browser, covering every screen and every action of the three roles. All run in CI on every push, with the malware scanner tested against real ClamAV. |
+| Tests | 1,105 backend tests (unit, integration against real PostgreSQL, meta-tests), 96% line coverage. 26 Playwright flows on a phone-sized browser, covering every screen and every action of the three roles. All run in CI on every push, with the malware scanner tested against real ClamAV. |
+| Measured, not asserted | Every claim has a method, a result and its limits: [the evaluation](docs/evaluation.md). What this build does not do: [the limitations](docs/limitations.md). |
 | Proven live | Load storm, a broker outage under load, the edge rate limit, a nightly restore to a chosen moment: [results](#results-from-the-live-server) |
 
 ---
@@ -21,7 +41,7 @@ Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Re
 |---|---|
 | 5 minutes | [Try it](#try-it) below, then the [tour](#a-ten-minute-tour-of-the-live-demo) |
 | 20 minutes | [The problem, before the code](docs/problem.md): who uses it, the ground it runs on, how offices go wrong, who might attack it, and what we assumed. Then [from finding to proof](docs/traceability.md), which follows each finding to the test that proves the response holds |
-| An hour | [Architecture](docs/architecture.md) · [18 decision records](docs/decisions/), each with the alternatives we rejected · [Scope](docs/scope.md): what v1 leaves out, and why · [Runbook](docs/runbook.md) · [Load and chaos tests](loadtest/README.md) |
+| An hour | [Architecture](docs/architecture.md) and [diagrams](docs/diagrams.md) · [18 decision records](docs/decisions/), each with the alternatives we rejected · [Evaluation](docs/evaluation.md): nine questions, each with its method, results and threats to validity · [Limitations](docs/limitations.md) · [Scope](docs/scope.md): what v1 leaves out, and why · [Runbook](docs/runbook.md) · [Load and chaos tests](loadtest/README.md) |
 
 ---
 
@@ -51,7 +71,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
 | Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the key for your authenticator app is in the submission email) |
 
-Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
+The live site runs in **demo mode**: it sends no SMS, shows codes on screen instead, and so accepts only numbers on the unassigned `+880 10` prefix, which no real phone has. Your own number is refused, and the screen says why. A deployment with an SMS provider turns demo mode off, accepts every Bangladeshi operator, and refuses the `010` prefix ([limitations](docs/limitations.md#1-the-live-demo-runs-in-demo-mode)). Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
 
 For the API: open https://grs.root-access.xyz/api/docs/. The reference starts with how to log in and the rules every endpoint follows, then lists the endpoints in the order a request meets them. Try `POST /api/v1/auth/login`, copy `access` from the answer into the **Bearer** field under Authentication, and every call you try after that is made as that user.
 
@@ -139,7 +159,7 @@ docker run --rm --network grs-project_default \
 | Docker + Docker Compose | `Dockerfile` (multi-stage, non-root), `docker-compose.yml`, `docker-compose.prod.yml` |
 | Git | Squash-merged pull requests, CI on every push (`.github/workflows/ci.yml`) |
 | API documentation | OpenAPI 3 at `/api/docs/`; a test fails on any schema warning (`test_docs.py`) |
-| Automated tests | `tests/`: 1,081 tests, 96% coverage; `web/e2e/`: 25 browser tests |
+| Automated tests | `tests/`: 1,105 tests, 96% coverage; `web/e2e/`: 26 browser flows |
 
 ### Bonus
 
@@ -150,7 +170,7 @@ docker run --rm --network grs-project_default \
 | Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo); Mailpit catches everything locally |
 | Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
 | Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
-| Frontend UI with live link | https://grs.root-access.xyz: 21 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
+| Frontend UI with live link | https://grs.root-access.xyz: 22 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
 
 ---
 
@@ -205,5 +225,6 @@ tests/           unit · integration (real PostgreSQL) · meta (routes, migratio
 deploy/          nginx · postgres (pgaudit, WAL-G) · gunicorn · scripts (bootstrap, deploy, backup, restore drills, demo reset)
 web/             Next.js app (static export) · e2e (Playwright)
 loadtest/        k6 storm, chaos run, edge check
-docs/            problem · traceability · architecture · decisions · scope · runbook
+docs/            problem · traceability · architecture · diagrams · decisions · evaluation · limitations · scope · runbook
+tools/           benchmarks: password hash cost, check digits, page weight
 ```

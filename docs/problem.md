@@ -128,4 +128,4 @@ Some things could not be measured from here. We designed for these, and we write
 
 ## What "done" meant
 
-We held ourselves to one rule: **every claim in these documents is proven by something that runs.** A test, a load test, a chaos run or a restore drill. If we could not prove something to that standard, it did not ship, and [scope.md](scope.md) says what was left out and why.
+We held ourselves to one rule: **every claim in these documents is proven by something that runs.** A test, a load test, a chaos run or a restore drill. If we could not prove something to that standard, it did not ship, and [scope.md](scope.md) says what was left out and why. The [evaluation](evaluation.md) reports each measurement with its method and its limits, including the ones that went against us, and the [limitations](limitations.md) list everything this build does not do or does not prove.

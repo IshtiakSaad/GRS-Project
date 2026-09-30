@@ -54,6 +54,7 @@ function Login() {
         <form onSubmit={submit} className="space-y-4" noValidate>
           {params.get("reset") && <Notice tone="success">{t("auth.resetDone")}</Notice>}
           {params.get("set") && <Notice tone="success">{t("auth.setDone")}</Notice>}
+          {DEMO && <Notice>{t("auth.demoMode")}</Notice>}
           <ErrorNotice error={error} />
           <TextInput
             label={t("common.phone")}

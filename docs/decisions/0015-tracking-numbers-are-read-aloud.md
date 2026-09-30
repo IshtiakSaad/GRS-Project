@@ -17,7 +17,7 @@ Each year has its own sequence, created years ahead, and a missing year is creat
 ## Alternatives considered
 
 - **Luhn** (as on bank cards). Well known, but it misses some adjacent swaps (09 and 90).
-- **Verhoeff.** Catches the same errors as Damm with a more complicated table; Damm is simpler to implement and to test exhaustively.
+- **Verhoeff.** Catches every single error and every neighbour swap, as Damm does. Measured on 5,000 tracking numbers, it also catches more of the rarer mistakes (jump swaps, twins: by 4 to 9 points) and fewer phonetic ones such as 13 heard as 30 (83% against Damm's 98%) ([evaluation](../evaluation.md#8-q6-does-the-tracking-number-catch-the-mistakes-people-make)). We keep Damm: one table and a loop, simpler to implement and to test exhaustively, and better on the class specific to numbers heard over a phone. An earlier version of this record said Verhoeff catches the same errors; the measurement corrected it.
 - **Letters and digits** (shorter numbers). Letters are hard to read over a phone line and to type on a Bangla keyboard; `0/O` and `1/I` confusions come back.
 - **No check digit.** Every typo becomes a lookup, and some typos become someone else's request.
 
