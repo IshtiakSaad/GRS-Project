@@ -53,7 +53,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 
 Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email lands at https://mail.grs.root-access.xyz. The database is wiped and reseeded at 03:00 Dhaka time.
 
-For the API: open https://grs.root-access.xyz/api/docs/, call `POST /api/v1/auth/login`, copy `access` from the response, click **Authorize** and paste it.
+For the API: open https://grs.root-access.xyz/api/docs/. The reference starts with how to log in and the rules every endpoint follows, then lists the endpoints in the order a request meets them. Try `POST /api/v1/auth/login`, copy `access` from the answer into the **Bearer** field under Authentication, and every call you try after that is made as that user.
 
 ### A ten-minute tour of the live demo
 
