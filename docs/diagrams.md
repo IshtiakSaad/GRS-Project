@@ -666,7 +666,7 @@ From `.github/workflows/ci.yml` and `deploy/scripts/deploy.sh`. Every change, do
 flowchart TD
   pr[Pull request] --> ci{CI: five jobs in parallel}
   ci --> lint[lint<br/>ruff, format]
-  ci --> test[test<br/>1,105 tests against real PostgreSQL,<br/>coverage, translations compiled]
+  ci --> test[test<br/>1,112 tests against real PostgreSQL,<br/>coverage, translations compiled]
   ci --> web[web<br/>whole stack up, demo data,<br/>Playwright through every role]
   ci --> clam[clamav<br/>scanner against real ClamAV]
   ci --> smoke[smoke<br/>served through Nginx, JSON 404s,<br/>HTTPS bucket reachable,<br/>point-in-time recovery drill]

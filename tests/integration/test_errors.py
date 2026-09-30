@@ -49,6 +49,27 @@ def test_unknown_url_is_json_404(client):
     assert _error(response)["code"] == "NOT_FOUND"
 
 
+def test_a_404_raised_inside_a_view_keeps_its_code(client):
+    response = client.get("/django-404")
+    assert response.status_code == 404
+    error = _error(response)
+    assert error["code"] == "NOT_FOUND"
+    assert error["message"]
+
+
+def test_a_403_raised_inside_a_view_keeps_its_code(client):
+    response = client.get("/django-403")
+    assert response.status_code == 403
+    assert _error(response)["code"] == "PERMISSION_DENIED"
+
+
+def test_messages_are_english_unless_bangla_is_asked_for(client):
+    english = _error(client.get("/django-404"))["message"]
+    bangla = _error(client.get("/django-404", headers={"Accept-Language": "bn"}))["message"]
+    assert english == "Not found."
+    assert bangla == "পাওয়া যায়নি।"
+
+
 def test_crash_is_json_500_without_internals():
     response = Client(raise_request_exception=False).get("/crash")
     assert response.status_code == 500

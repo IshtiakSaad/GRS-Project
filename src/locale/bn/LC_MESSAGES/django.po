@@ -222,3 +222,6 @@ msgstr ""
 
 msgid "Codes by SMS are paused for a short while. Try again later."
 msgstr "এসএমএসে কোড পাঠানো কিছুক্ষণের জন্য বন্ধ আছে। পরে আবার চেষ্টা করুন।"
+
+msgid "The office sets priority. Mark the request urgent instead."
+msgstr "অগ্রাধিকার অফিস ঠিক করে। এর বদলে আবেদনটি জরুরি হিসেবে চিহ্নিত করুন।"

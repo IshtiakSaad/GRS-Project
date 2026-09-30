@@ -142,7 +142,7 @@ REVIEW_SAMPLE_RATE = env.float("REVIEW_SAMPLE_RATE", default=0.05)
 # --- Internationalisation -------------------------------------------------------------------
 # Timestamps are stored in UTC. Business dates (tracking-number year, working days, due dates)
 # are computed in BUSINESS_TIME_ZONE.
-LANGUAGE_CODE = "bn"
+LANGUAGE_CODE = "en"  # the API answers in English unless asked; the web app asks
 LANGUAGES = [("bn", "Bangla"), ("en", "English")]
 TIME_ZONE = "UTC"
 BUSINESS_TIME_ZONE = "Asia/Dhaka"

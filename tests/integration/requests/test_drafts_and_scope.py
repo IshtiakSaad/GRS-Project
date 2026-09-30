@@ -54,6 +54,19 @@ def test_beneficiary_and_urgency_rules(as_user):
     assert "urgency_reason" in urgent.json()["error"]["fields"]
 
 
+def test_a_citizen_is_told_that_the_office_sets_priority(as_user):
+    """Dropping the field silently would look like a bug; the answer points to what works."""
+    c = cast()
+    api = as_user(c.owner)
+    response = _create(api, c.category, priority="HIGH")
+    assert error_code(response) == "VALIDATION_ERROR"
+    assert "urgent" in response.json()["error"]["fields"]["priority"][0]
+    draft = _create(api, c.category).json()
+    url = f"/api/v1/requests/{draft['id']}"
+    edit = api.patch(url, {"priority": "URGENT"}, format="json", HTTP_IF_MATCH='"1"')
+    assert error_code(edit) == "VALIDATION_ERROR"
+
+
 def test_text_is_cleaned_and_invisible_text_is_empty(as_user):
     c = cast()
     api = as_user(c.owner)
@@ -203,6 +216,7 @@ def test_detail_is_scoped(as_user, who, code):
     assert response.status_code == code
     if code == 404:
         assert b"tracking" not in response.content
+        assert error_code(response) == "NOT_FOUND"  # the documented code, not a bare ERROR
 
 
 def test_citizens_see_the_office_not_the_officer(as_user):

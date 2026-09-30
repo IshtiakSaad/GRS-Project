@@ -5,7 +5,8 @@ Clients branch on `code`, which never changes; `message` is for people and is lo
 
 import logging
 
-from django.http import JsonResponse
+from django.core.exceptions import PermissionDenied
+from django.http import Http404, JsonResponse
 from django.utils.translation import gettext as _
 from rest_framework import exceptions, status
 from rest_framework.response import Response
@@ -53,6 +54,11 @@ def envelope(code: str, message: str, fields: dict | None = None) -> dict:
 
 
 def exception_handler(exc, context):
+    # Django's own 404 and 403, raised inside a view, carry no code; give them DRF's.
+    if isinstance(exc, Http404):
+        exc = exceptions.NotFound()
+    elif isinstance(exc, PermissionDenied):
+        exc = exceptions.PermissionDenied()
     response = drf_exception_handler(exc, context)
     if response is None:
         return None  # unhandled: Django logs it and handler500 answers
