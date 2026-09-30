@@ -4,9 +4,55 @@ A citizen files a request with a government office from a phone. An officer work
 
 The real system lives in the details around it. The citizen is on a shared phone with 2G, reading Bangla, and reads her tracking number aloud over a bad line. Officers are under pressure to pick the easy cases, or the ones someone called about. Numbers that look good can be gamed without anyone lying. Someone with database access could quietly rewrite what happened. This repository is a working answer to that problem, built so that each claim below is proven by something that runs.
 
-**Live demo: https://grs.root-access.xyz** (Bangla first, English one tap away) · API: https://grs.root-access.xyz/api/docs/ · synthetic data, reset every night
+**Live demo: https://grs.root-access.xyz** (Bangla first, English one tap away) · API: https://grs.root-access.xyz/api/docs/ · synthetic data, reset every night · [demo logins](#on-the-live-demo)
 
 Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Redis · Celery · Nginx · Docker Compose · Next.js (static export) · Playwright · ClamAV · WAL-G
+
+## The assignment, requirement by requirement
+
+### Required features
+
+| Requirement | How | Where | Tests |
+|---|---|---|---|
+| JWT login / register | Phone + password; registration verifies the phone by SMS code, and a correct code logs the citizen in. Access tokens last 10 minutes; refresh tokens rotate, and reusing an old one logs out every device. Session length depends on whose device it is ([decision 14](docs/decisions/0014-sessions-follow-the-device.md)) | `apps/accounts/` | `auth/test_register.py`, `test_login.py`, `test_sessions.py`, `unit/test_tokens.py` |
+| Roles: citizen, officer, admin | Role on the user; administrators also need a two-step (TOTP) login. Every endpoint declares its permission, and a meta-test fails if one does not | `accounts/permissions.py` | `auth/test_two_factor.py`, `meta/test_routes.py` |
+| Create / view / update requests | Drafts are edited with `If-Match` versioning; after submission only the state machine changes a request | `service_requests/` | `requests/test_drafts_and_scope.py`, `test_submit.py` |
+| Category, title, description, priority | Categories carry a service target in working days. Priority is set by staff; a citizen marks a request urgent with a reason, and a priority sent by a citizen is refused with a message saying so | `directory/`, `service_requests/models.py` | `requests/test_actions.py`, `test_drafts_and_scope.py` |
+| Status | 8 states. Every combination of state, action and role is a row in one table, and database constraints reject impossible rows | `service_requests/transitions.py` | `requests/test_transition_matrix.py` (every cell), `db/test_constraints.py` |
+| Officer assignment | Officers take the next request in priority order (`SKIP LOCKED`, so two officers never get the same one); admins can assign and reassign, on the record | `service_requests/services.py` | `requests/test_queue.py` |
+| Comments | Public or internal. Citizens never see internal notes, and see staff by role, not name | `apps/collab/` | `collab/test_comments.py` |
+| File attachment | Direct upload to object storage by signed URL. The server checks the size, scans the file with ClamAV and reads its real type from its bytes before it can be downloaded | `collab/storage.py`, `verification.py`, `scanning.py` | `collab/test_attachments.py`, `unit/test_scanning.py`, `unit/test_clamd.py` (also against real ClamAV in CI) |
+| Manage categories | Admin CRUD for departments, categories, holidays and office closures; changes recompute the deadlines of open requests | `apps/admin_api/` | `admin/test_directory.py` |
+| Assign officers | Create officers (a text links them to a page that sets their own password), deactivate, assign | `admin_api/services.py` | `admin/test_users.py`, `requests/test_actions.py` |
+| View all requests | Admin list with filters (status, category, department, officer, overdue), keyset pagination | `service_requests/views.py` | `requests/test_drafts_and_scope.py` |
+| Basic statistics | Volumes, resolution times and on-time rates by department, category or officer, each shown beside the number that would reveal it being gamed | `admin_api/stats.py` | `admin/test_stats.py` |
+
+### Technical requirements
+
+| Requirement | Where |
+|---|---|
+| Python, Django REST Framework, REST API | `src/` |
+| PostgreSQL | Constraints, triggers, row locks, partitioned log tables, least-privilege roles: `deploy/postgres/`, migrations |
+| JWT | `apps/accounts/tokens.py` (rotating signing keys) |
+| Docker + Docker Compose | `Dockerfile` (multi-stage, non-root), `docker-compose.yml`, `docker-compose.prod.yml` |
+| Git | Squash-merged pull requests, CI on every push (`.github/workflows/ci.yml`) |
+| API documentation | OpenAPI 3 at `/api/docs/`; a test fails on any schema warning (`test_docs.py`) |
+| Automated tests | `tests/`: 1,112 tests, 96% coverage; `web/e2e/`: 26 browser flows |
+
+### Bonus
+
+| Bonus | How |
+|---|---|
+| Redis | Two instances split by how they may fail: a broker that never evicts, and a cache that may evict anything and fails open ([decision 4](docs/decisions/0004-two-redis-instances.md)) |
+| Celery | Notification delivery, file verification, deadline recompute, overdue escalation, audit sealing, cleanup |
+| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo) |
+| Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
+| Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
+| Frontend UI with live link | https://grs.root-access.xyz: 22 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
+
+---
+
+## How it fits together
 
 ```mermaid
 flowchart LR
@@ -29,7 +75,7 @@ One server, one Compose file; every part can move to its own host without code c
 
 | | |
 |---|---|
-| Tests | 1,105 backend tests (unit, integration against real PostgreSQL, meta-tests), 96% line coverage. 26 Playwright flows on a phone-sized browser, covering every screen and every action of the three roles. All run in CI on every push, with the malware scanner tested against real ClamAV. |
+| Tests | 1,112 backend tests (unit, integration against real PostgreSQL, meta-tests), 96% line coverage. 26 Playwright flows on a phone-sized browser, covering every screen and every action of the three roles. All run in CI on every push, with the malware scanner tested against real ClamAV. |
 | Measured, not asserted | Every claim has a method, a result and its limits: [the evaluation](docs/evaluation.md). What this build does not do: [the limitations](docs/limitations.md). |
 | Proven live | Load storm, a broker outage under load, the edge rate limit, a nightly restore to a chosen moment: [results](#results-from-the-live-server) |
 
@@ -173,50 +219,6 @@ docker run --rm --network grs-project_default \
 | Attach a file | anyone involved | `POST …/attachments` → `PUT` the file to the returned URL → `POST /api/v1/attachments/{id}/confirm` |
 | Track it | citizen | `GET /api/v1/requests/by-tracking/{number}` (Bangla digits accepted) |
 | See who looked | citizen | `GET /api/v1/requests/{id}/access-log` |
-
----
-
-## The assignment, requirement by requirement
-
-### Required features
-
-| Requirement | How | Where | Tests |
-|---|---|---|---|
-| JWT login / register | Phone + password; registration verifies the phone by SMS code, and a correct code logs the citizen in. Access tokens last 10 minutes; refresh tokens rotate, and reusing an old one logs out every device. Session length depends on whose device it is ([decision 14](docs/decisions/0014-sessions-follow-the-device.md)) | `apps/accounts/` | `auth/test_register.py`, `test_login.py`, `test_sessions.py`, `unit/test_tokens.py` |
-| Roles: citizen, officer, admin | Role on the user; administrators also need a two-step (TOTP) login. Every endpoint declares its permission, and a meta-test fails if one does not | `accounts/permissions.py` | `auth/test_two_factor.py`, `meta/test_routes.py` |
-| Create / view / update requests | Drafts are edited with `If-Match` versioning; after submission only the state machine changes a request | `service_requests/` | `requests/test_drafts_and_scope.py`, `test_submit.py` |
-| Category, title, description, priority | Categories carry a service target in working days; priority can be set by staff | `directory/`, `service_requests/models.py` | `requests/test_actions.py` |
-| Status | 8 states. Every combination of state, action and role is a row in one table, and database constraints reject impossible rows | `service_requests/transitions.py` | `requests/test_transition_matrix.py` (every cell), `db/test_constraints.py` |
-| Officer assignment | Officers take the next request in priority order (`SKIP LOCKED`, so two officers never get the same one); admins can assign and reassign, on the record | `service_requests/services.py` | `requests/test_queue.py` |
-| Comments | Public or internal. Citizens never see internal notes, and see staff by role, not name | `apps/collab/` | `collab/test_comments.py` |
-| File attachment | Direct upload to object storage by signed URL. The server checks the size, scans the file with ClamAV and reads its real type from its bytes before it can be downloaded | `collab/storage.py`, `verification.py`, `scanning.py` | `collab/test_attachments.py`, `unit/test_scanning.py`, `unit/test_clamd.py` (also against real ClamAV in CI) |
-| Manage categories | Admin CRUD for departments, categories, holidays and office closures; changes recompute the deadlines of open requests | `apps/admin_api/` | `admin/test_directory.py` |
-| Assign officers | Create officers (a text links them to a page that sets their own password), deactivate, assign | `admin_api/services.py` | `admin/test_users.py`, `requests/test_actions.py` |
-| View all requests | Admin list with filters (status, category, department, officer, overdue), keyset pagination | `service_requests/views.py` | `requests/test_drafts_and_scope.py` |
-| Basic statistics | Volumes, resolution times and on-time rates by department, category or officer, each shown beside the number that would reveal it being gamed | `admin_api/stats.py` | `admin/test_stats.py` |
-
-### Technical requirements
-
-| Requirement | Where |
-|---|---|
-| Python, Django REST Framework, REST API | `src/` |
-| PostgreSQL | Constraints, triggers, row locks, partitioned log tables, least-privilege roles: `deploy/postgres/`, migrations |
-| JWT | `apps/accounts/tokens.py` (rotating signing keys) |
-| Docker + Docker Compose | `Dockerfile` (multi-stage, non-root), `docker-compose.yml`, `docker-compose.prod.yml` |
-| Git | Squash-merged pull requests, CI on every push (`.github/workflows/ci.yml`) |
-| API documentation | OpenAPI 3 at `/api/docs/`; a test fails on any schema warning (`test_docs.py`) |
-| Automated tests | `tests/`: 1,105 tests, 96% coverage; `web/e2e/`: 26 browser flows |
-
-### Bonus
-
-| Bonus | How |
-|---|---|
-| Redis | Two instances split by how they may fail: a broker that never evicts, and a cache that may evict anything and fails open ([decision 4](docs/decisions/0004-two-redis-instances.md)) |
-| Celery | Notification delivery, file verification, deadline recompute, overdue escalation, audit sealing, cleanup |
-| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo) |
-| Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
-| Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
-| Frontend UI with live link | https://grs.root-access.xyz: 22 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
 
 ---
 

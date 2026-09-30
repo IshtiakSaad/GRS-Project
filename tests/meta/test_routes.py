@@ -116,8 +116,9 @@ def test_errors_speak_the_callers_language(api, language, expected):
 
 
 @pytest.mark.django_db
-def test_bangla_is_the_default(api):
+def test_english_is_the_default_for_api_callers(api):
+    """A caller that names no language gets English; the web app always names one."""
     response = api.post(
         "/api/v1/auth/login", {"phone": "01000000001", "password": "whatever-it-is"}, format="json"
     )
-    assert response.json()["error"]["message"] == "ফোন নম্বর বা পাসওয়ার্ড সঠিক নয়।"
+    assert response.json()["error"]["message"] == "Phone number or password is incorrect."

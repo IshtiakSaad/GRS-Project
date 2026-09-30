@@ -1,5 +1,7 @@
 """Throwaway views that raise each kind of error, so the envelope can be tested in isolation."""
 
+from django.core.exceptions import PermissionDenied
+from django.http import Http404
 from django.urls import path
 from rest_framework import serializers
 from rest_framework.permissions import AllowAny
@@ -42,7 +44,23 @@ class CrashView(APIView):
         raise RuntimeError("boom")
 
 
+class DjangoNotFoundView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        raise Http404  # what services raise for a record the caller may not see
+
+
+class DjangoForbiddenView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        raise PermissionDenied
+
+
 urlpatterns = [
+    path("django-404", DjangoNotFoundView.as_view()),
+    path("django-403", DjangoForbiddenView.as_view()),
     path("validation", ValidationView.as_view()),
     path("domain", DomainErrorView.as_view()),
     path("default-permission", DefaultPermissionView.as_view()),

@@ -91,9 +91,9 @@ Four kinds of test carry most of the weight:
 | Suite | Tests | Machine |
 |---|---|---|
 | Unit | 114 | Laptop |
-| Integration (real PostgreSQL, Redis, storage) | 973 | Laptop |
+| Integration (real PostgreSQL, Redis, storage) | 980 | Laptop |
 | Meta (routes, migrations, bulkhead) | 18 | Laptop |
-| **Backend total** | **1,105** (1,104 passed, 1 skipped\*), **65.6 s** with coverage | Laptop |
+| **Backend total** | **1,112** (1,111 passed, 1 skipped\*), **65.6 s** with coverage | Laptop |
 | Browser: flows through every role | 26 | CI |
 | Browser: screenshots of every screen | 4 | CI |
 
@@ -415,7 +415,7 @@ Beyond those listed under each question:
 
 | Claim | Held? |
 |---|---|
-| The rules are enforced, and illegal states are refused by the database itself | **Yes**: 1,105 tests, 96% of lines, every cell of the transition matrix |
+| The rules are enforced, and illegal states are refused by the database itself | **Yes**: 1,112 tests, 96% of lines, every cell of the transition matrix |
 | One server carries a morning peak and degrades without failing | **Yes, up to 70–85 req/s**; no errors at twice that, but p95 of 8–11 s |
 | A broker outage loses nothing and is invisible to users | **Yes**, after a fix the chaos run forced |
 | One address cannot flood the login | **Yes**, within 2 requests of the configured limit. A botnet can; that is a stated limitation |

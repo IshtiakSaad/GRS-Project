@@ -168,7 +168,8 @@ class RequestsView(APIView):
             201: serializers.RequestOut,
             **errors(e400=["VALIDATION_ERROR", "INVALID_CATEGORY"], e409=["TOO_MANY_DRAFTS"]),
         },
-        description="Create a draft (citizens). Nothing is sent to the office until `submit`.",
+        description="Create a draft (citizens). Nothing is sent to the office until `submit`. "
+        "`priority` is set by staff and refused here; use `citizen_urgent` with a reason.",
     )
     def post(self, request):
         if request.user.role != Role.CITIZEN:

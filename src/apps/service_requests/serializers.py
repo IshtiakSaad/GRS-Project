@@ -1,6 +1,7 @@
 """Request payloads. Three views of a request: the owner's, staff's, and the short list rows
 staff see (tracking number, category, status, priority, due date, initials)."""
 
+from django.utils.translation import gettext_lazy as _
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
@@ -48,6 +49,14 @@ class DraftIn(serializers.Serializer):
     )
     citizen_urgent = serializers.BooleanField(default=False)
     urgency_reason = TextField(max_length=500, required=False, allow_null=True)
+
+    def validate(self, attrs):
+        # Priority is the office's call. Saying so beats silently dropping the field.
+        if "priority" in self.initial_data:
+            raise serializers.ValidationError(
+                {"priority": _("The office sets priority. Mark the request urgent instead.")}
+            )
+        return attrs
 
 
 class ListFilterIn(serializers.Serializer):

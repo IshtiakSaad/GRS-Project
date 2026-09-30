@@ -44,7 +44,8 @@ track it by number, read its timeline, see which office looked at it, and reopen
 `code` is stable and meant for programs; `message` is for people, in their language. Quote
 `request_id` when reporting a problem: every log line of that request carries it.
 
-**Language.** Bangla by default; send `Accept-Language: en` for English.
+**Language.** English by default; send `Accept-Language: bn` for Bangla. The web app sends
+the visitor's language, so citizens see Bangla there.
 
 **Retries are safe where it matters.** Submitting takes an `Idempotency-Key` header: 8 to 64
 letters, digits, `-` or `_`, new for each request, such as a UUID. Sending the same key again
