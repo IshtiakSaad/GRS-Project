@@ -142,6 +142,13 @@ jobs:
           curl -sf http://localhost:8080/ | grep -q '<html'
           curl -sf http://localhost:8080/login/ | grep -q '<html'
           test "$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/nope/)" = 404
+      # Locally the bucket is plain HTTP on the same host; production's is HTTPS on AWS. A
+      # PostgreSQL image that cannot verify a public certificate would archive nothing there.
+      - name: PostgreSQL can verify an HTTPS bucket
+        run: |
+          docker compose exec -T postgres bash -c 'echo | openssl s_client -verify_return_error \
+            -connect s3.amazonaws.com:443 -servername s3.amazonaws.com 2>&1' \
+            | grep -q 'Verify return code: 0'
       # The drill production runs nightly: base backup to the off-host bucket, then restore to
       # a named point from the bucket alone, and verify counts and the audit chain.
       - name: Point-in-time recovery from the off-host archive

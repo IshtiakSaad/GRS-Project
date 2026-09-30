@@ -2,8 +2,11 @@
 # admin tools), which the application's own access log cannot see.
 FROM postgres:17.11-bookworm
 
+# ca-certificates: WAL-G reaches the off-host bucket over HTTPS, and the base image trusts no
+# certificate authority. Without it every upload retries forever and archiving stalls.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-17-pgaudit=17.1-2.pgdg12+1 \
+    && apt-get install -y --no-install-recommends ca-certificates \
+        postgresql-17-pgaudit=17.1-2.pgdg12+1 \
     && rm -rf /var/lib/apt/lists/*
 
 # WAL-G: continuous WAL archiving and base backups to the off-host bucket (point-in-time
