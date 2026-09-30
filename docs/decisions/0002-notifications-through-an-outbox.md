@@ -12,8 +12,18 @@ A notification is a row written in the same transaction as the change it announc
 
 The chaos run showed a second gap: with the broker down, each web request still waited for it to time out. A per-process circuit breaker now skips the broker for 30 seconds after a failure and leaves the work to the sweeper.
 
+## Alternatives considered
+
+- **Send from the web request.** The simplest code, and a slow SMS gateway becomes a slow API; a gateway outage becomes failed submissions.
+- **Enqueue a Celery task after commit, and nothing else.** Fast and common. It loses the message whenever the process dies or Redis is unreachable between the commit and the enqueue, and nothing notices.
+- **Stream changes out of the database log** (logical decoding, Debezium). Correct and elegant, and a Kafka-sized piece of infrastructure for a system that sends a few thousand texts a day.
+
 ## Consequences
 
 - If the transaction rolls back, nothing is sent. If it commits, the message will be delivered, even across a broker outage (measured: 401 of 401).
 - A message can be sent twice in rare crash windows. SMS texts are written so a duplicate is harmless.
 - One more table to keep small: it is partitioned by month and old months are dropped.
+
+## What would change this
+
+Volume at which a sweeper polling every 30 seconds becomes a noticeable load. The next step would be PostgreSQL's `LISTEN/NOTIFY` to wake the sender, keeping the table as the record.

@@ -1,7 +1,7 @@
 """The object store, spoken to only through the S3 API, so the server stays replaceable.
 
 Signing a URL is local computation: creating an upload or download link works even while the
-store is down (design N4). Only the verifier and cleanup talk to the store itself.
+store is down. Only the verifier and cleanup talk to the store itself.
 """
 
 from datetime import timedelta

@@ -1,4 +1,4 @@
-"""One-time codes sent by SMS (design §7.1).
+"""One-time codes sent by SMS.
 
 Codes are stored as HMAC-SHA256 with a server key, not with the password hasher: a 6-digit code
 has too little entropy for slow hashing to matter, and putting it on the hasher would add CPU

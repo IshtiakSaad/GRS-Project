@@ -65,7 +65,7 @@ def test_a_public_staff_comment_tells_the_citizen(as_user):
     _post(as_user(c.assigned), request, "Please bring the original.")
     sms = Notification.objects.get(template="request_comment")
     assert sms.recipient_id == c.owner.pk
-    assert sms.payload == {"tracking_no": request.tracking_no}  # never the comment text (D1)
+    assert sms.payload == {"tracking_no": request.tracking_no}  # never the comment (decision 12)
 
 
 def test_the_citizens_comment_is_their_answer(as_user):

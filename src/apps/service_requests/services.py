@@ -113,7 +113,7 @@ def claim_next(officer: User, http_request=None) -> ServiceRequest | None:
 
 
 def queue(officer: User):
-    """Design §5.4: priority, then earliest deadline, then first come. Served by
+    """Priority, then earliest deadline, then first come (decision 3). Served by
     sr_dept_queue_idx."""
     if officer.role != Role.OFFICER:
         return ServiceRequest.objects.none()

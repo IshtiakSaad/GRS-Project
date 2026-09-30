@@ -103,7 +103,7 @@ def _broker_breaker_closed():
 
 # --- bulkhead guard ---------------------------------------------------------------------------
 # Every password hash computed while serving a request must be on a route that Nginx sends to
-# the api-auth bulkhead (design §12.4). The guard runs during every test; a new view that hashes
+# the api-auth bulkhead. The guard runs during every test; a new view that hashes
 # on the main pool fails whichever test first calls it.
 
 _serving_path: ContextVar[str | None] = ContextVar("serving_path", default=None)

@@ -1,8 +1,8 @@
 """What the monitor checks each minute. Every check returns a Finding: firing or not, and one
 line a person can act on.
 
-Targets come from the design: 99.5% of API requests succeed per month (N1), p95 under 1 s
-(N2), status messages delivered within 15 minutes (N3). Availability alerts use the standard
+Targets (decision 10): 99.5% of API requests succeed per month, p95 under 1 s, and status
+messages delivered within 15 minutes. Availability alerts use the standard
 multi-window burn rates: page when the monthly error budget would be gone in about 2 days
 (fast) or 5 days (slow), and only while the short window confirms it is still happening.
 """

@@ -14,9 +14,20 @@ Availability alerts use multi-window burn rates: alert when the month's error bu
 
 Alerts go to a private ntfy topic, which pushes them to a phone: once when a problem starts, every two hours while it lasts, and once when it clears. The monitor is its own process and does not use the broker or the workers, so it still reports when they are what failed. A scheduled GitHub Actions job checks the public address from outside, for the one failure the monitor cannot report: the server itself going dark.
 
+## Alternatives considered
+
+- **Prometheus, Grafana and Alertmanager.** The standard, with graphs and a query language, and three more services to run, secure and back up on a small server, plus instrumenting every process.
+- **A hosted monitoring service.** Nothing to run, a monthly bill per host, and request logs leaving the office.
+- **An uptime ping only.** Catches the site being down and misses everything that fails quietly: messages not sent, files not scanned, backups not shipped.
+- **Alert on every error.** Wakes someone at 3 a.m. for one failed request. Burn rates alert on what threatens the target.
+
 ## Consequences
 
 - No new infrastructure: one more process from the same image, and one log file kept under 20 MB.
 - The indicators are logged each minute as one JSON line (`docker compose logs monitor | grep sli`), which is the record; there are no graphs.
 - The counts live in memory: a monitor restart forgets the last six hours, so slow-burn alerts need time to re-arm.
 - The ntfy topic name is the only secret; anyone who has it can read the alerts. They carry no personal data.
+
+## What would change this
+
+More than one server. Per-process counts in memory stop being the whole picture, and Prometheus becomes worth its cost.

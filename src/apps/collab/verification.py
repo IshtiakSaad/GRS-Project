@@ -1,4 +1,4 @@
-"""Verify one uploaded file (design §13.2). Runs in the worker, never in a web request.
+"""Verify one uploaded file. Runs in the worker, never in a web request.
 
 Checks, in order: something was uploaded; its real size is the declared size; the scanner finds
 nothing; its first bytes are an allowed type and the declared one. Only then READY. A file

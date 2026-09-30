@@ -1,7 +1,7 @@
 """Message texts, Bangla first.
 
 Outbound SMS and email leave our infrastructure, so they carry only a code, a tracking number,
-a status or an instruction: never names, descriptions or other personal detail (decision D1).
+a status or an instruction: never names, descriptions or other personal detail (decision 12).
 Keep SMS within one Unicode segment (70 characters) where possible.
 """
 

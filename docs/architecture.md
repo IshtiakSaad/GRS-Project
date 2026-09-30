@@ -1,6 +1,6 @@
 # Architecture
 
-One Django codebase, run as several processes with different jobs, around one PostgreSQL database. Everything runs from one Compose file on one server; each piece can move to its own host later without code changes.
+One Django codebase, run as several processes with different jobs, around one PostgreSQL database. Everything runs from one Compose file on one server; each piece can move to its own host later without code changes. The reasons behind each shape are in the [decision records](decisions/); the problem they answer is in [problem.md](problem.md).
 
 ```mermaid
 flowchart LR
@@ -29,6 +29,8 @@ flowchart LR
   worker -->|audit checkpoints| offsite
 ```
 
+The off-host bucket is any S3 store with Object Lock on another system, reached through the server's instance role. On the public demo it is, for now, a stand-in bucket on the same server: the mechanism and the nightly drill are the same, the separation is not.
+
 ## Processes
 
 | Process | Job | If it stops |
@@ -54,7 +56,7 @@ flowchart LR
 
 ## The rules live in the database
 
-The application checks everything first, but PostgreSQL is the last line:
+The application checks everything first, but PostgreSQL is the last line ([decision 1](decisions/0001-postgresql-enforces-the-rules.md)):
 
 - Status and the columns each status requires (a resolved request has a resolution note, an assigned one has an officer).
 - One open SLA pause per request; valid deadlines; a reviewer is never the person being reviewed.
@@ -65,14 +67,15 @@ Tests insert illegal rows directly and assert that PostgreSQL rejects them (`tes
 
 ## Deadlines
 
-A category has a target in working days. Deadlines count Sunday to Thursday in Dhaka time, skip holidays and suspension periods, and stop while the office waits on the citizen. Changing a holiday recomputes the open requests it affects, in batches that lock the same rows a transition would. Every five minutes, requests past their deadline are flagged once per cycle and the officer and department admins are told.
+A category has a target in working days. Deadlines count Sunday to Thursday in Dhaka time, skip holidays and suspension periods, and stop while the office waits on the citizen. Changing a holiday recomputes the open requests it affects, in batches that lock the same rows a transition would. Every five minutes, requests past their deadline are flagged once per cycle and the officer and department admins are told. An officer can pause the clock by asking the citizen for information twice per cycle; a third time needs an administrator.
 
 ## Accountability
 
-- **Audit log**: every state change and admin action, append-only. Every minute a sealer chains new rows with SHA-256 and copies a checkpoint, locked, to a write-once bucket on another system. `manage.py verify_audit` checks the chain against those copies, which root on this server cannot change; the nightly restore checks run it on the restored copies.
-- **Access log**: every time staff open, change or download a request, and every list page they see. Citizens see which office and role looked (not names); admins see who.
+- **Audit log**: every state change and admin action, append-only. Every minute a sealer chains new rows with SHA-256 and copies a checkpoint, locked, to a write-once bucket on another system. `manage.py verify_audit` checks the chain against those copies, which root on this server cannot change; the nightly restore checks run it on the restored copies ([decision 6](decisions/0006-hash-chained-audit-log.md)).
+- **Access log**: every time staff open, change or download a request, and every list page they see. Citizens see which office and role looked (not names); admins see who ([decision 17](decisions/0017-staff-access-is-visible.md)).
 - **Break-glass**: opening a request outside one's department needs a reason code, and appears in a report.
-- **Review queue**: rejections near the deadline, and a sample of resolutions, go to an administrator who can uphold or overturn them.
+- **Review queue**: rejections in the last fifth of the deadline, and 5% of resolutions, go to an administrator who can uphold or overturn them. Nobody reviews their own decision.
+- **Statistics**: each headline number comes with the numbers that would expose it being gamed ([decision 16](decisions/0016-every-statistic-has-a-counterweight.md)).
 
 ## Watching it
 

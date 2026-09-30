@@ -1,4 +1,4 @@
-"""Idempotency-Key with Stripe semantics (design §9.4).
+"""Idempotency-Key with Stripe semantics.
 
 - New key: run the operation and store its response, in the same transaction.
 - Same key, same body: return the stored response; nothing runs twice.

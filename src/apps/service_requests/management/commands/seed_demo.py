@@ -1,4 +1,4 @@
-"""Demo data for the local profile and the public demo (design §0.2). Synthetic only.
+"""Demo data for the local profile and the public demo. Synthetic only.
 
     docker compose run --rm --no-deps api python manage.py seed_demo
 

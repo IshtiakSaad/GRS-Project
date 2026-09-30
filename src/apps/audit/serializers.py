@@ -19,7 +19,7 @@ class _Actor(serializers.Serializer):
 
 
 class AccessOut(serializers.ModelSerializer):
-    """The citizen's view: which office looked, in which role, when. Never a name (design §7.5):
+    """The citizen's view: which office looked, in which role, when. Never a name:
     decisions are the office's, and officers are not exposed to pressure."""
 
     at = serializers.DateTimeField(source="created_at")

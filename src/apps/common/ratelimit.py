@@ -1,4 +1,4 @@
-"""Application rate limits (design §12.1): a sliding-window counter in redis-cache.
+"""Application rate limits: a sliding-window counter in redis-cache.
 
 The edge (Nginx) limits per IP, generously, because many citizens share one IP behind carrier
 NAT. Here the key is the user, or the phone number on the unauthenticated auth routes.
@@ -132,7 +132,7 @@ class RateLimit(BaseThrottle):
         return True
 
 
-# The limits (design §12.1). Tuned by the load test; generous enough for a real person.
+# The limits. Tuned by the load test; generous enough for a real person.
 LOGIN = Rule("login", 20, 600, by="phone")
 REGISTER = Rule("register", 5, 3600, by="phone")
 CODE_CHECK = Rule("code-check", 10, 600, by="phone")

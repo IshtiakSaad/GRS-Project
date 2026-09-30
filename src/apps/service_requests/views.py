@@ -70,7 +70,7 @@ def _etag(req: ServiceRequest) -> str:
 
 
 def _if_match(request) -> int:
-    """Required where overwriting someone else's edit is the risk (design §9.3)."""
+    """Required where overwriting someone else's edit is the risk."""
     raw = request.headers.get("If-Match")
     if raw is None:
         raise AppError(
@@ -223,7 +223,7 @@ class RequestView(APIView):
 
 
 class RequestActionView(APIView):
-    """Every state change after the draft, by name (design §5.2)."""
+    """Every state change after the draft, by name."""
 
     permission_classes = [IsAnyUser]
 

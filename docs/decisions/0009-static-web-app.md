@@ -16,9 +16,19 @@ The web app lives in `web/`: Next.js with TypeScript, built with `output: "expor
 - Files go from the browser to object storage with the signed URL (decision 7); the files host allows only the app's origin to do so.
 - Playwright walks one request through all three roles on a phone-sized screen, against the full Compose stack, in CI.
 
+## Alternatives considered
+
+- **Server-rendered Django templates.** The strongest alternative: HTML on first byte, no JavaScript needed, excellent on 2G. We chose a client app because the API is the product, and the web app should be its first client, using exactly the endpoints any other client would. Every screen is a proof that the API is enough.
+- **Next.js with a Node server** (server rendering). Faster first paint, and one more long-running process to size, restart and secure beside Django.
+- **A native Android app.** The best experience on the phones most citizens have, and an install, an app store and an update cycle between a citizen and their first request.
+
 ## Consequences
 
 - No Node process in production; the app costs a few megabytes of disk and nothing at run time.
-- A first visit downloads the JavaScript before anything shows. Pages are small and cached (`/_next/static/` is immutable), but there is no server-rendered first paint; offline drafts are on the roadmap.
+- A first visit downloads the JavaScript before anything shows. Pages are small and cached (`/_next/static/` is immutable), but there is no server-rendered first paint, and drafts need a connection ([scope](../scope.md)).
 - A refresh token in browser storage can be read by script running on the page. The CSP allows only this origin's scripts; the token rotates, and reuse of an old one ends every session of the account.
 - The CSP needs `'unsafe-inline'` for scripts because the export inlines its bootstrap. Nonces would need a server.
+
+## What would change this
+
+Measured first-load times on 2G that stop citizens finishing a request. The answer would be server-rendered pages for the citizen's few most-used screens, not a rewrite.

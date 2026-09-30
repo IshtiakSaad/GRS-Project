@@ -52,7 +52,7 @@ def test_submit_numbers_times_and_announces_the_request(as_user):
         Kind.STATUS,
         c.owner.pk,
     )
-    assert sms.payload == {"tracking_no": number}  # no names or descriptions leave (D1)
+    assert sms.payload == {"tracking_no": number}  # no names or descriptions leave (decision 12)
 
 
 def test_the_deadline_skips_holidays_and_suspensions(as_user):
@@ -74,9 +74,14 @@ def test_the_deadline_skips_holidays_and_suspensions(as_user):
     later, _ = _submitted(c, api, HTTP_IDEMPOTENCY_KEY=key())
     assert later.due_at.date() > baseline.due_at.date()
 
+    # The next working day: the day after may be a Friday or Saturday, which a suspension
+    # would not move.
+    next_working_day = first_working_day + timedelta(days=1)
+    while next_working_day.weekday() in (4, 5):
+        next_working_day += timedelta(days=1)
     national = SlaSuspension.objects.create(
-        starts_on=first_working_day + timedelta(days=1),
-        ends_on=first_working_day + timedelta(days=1),
+        starts_on=next_working_day,
+        ends_on=next_working_day,
         reason="Internet shutdown",
         created_by=c.admin,
     )
@@ -228,7 +233,7 @@ def test_an_old_twin_is_not_a_duplicate(as_user):
 
 
 def test_an_unverified_phone_may_submit_one_request(as_user):
-    """Degraded registration (design §7.1): if SMS is down, a citizen can still file once."""
+    """Degraded registration: if SMS is down, a citizen can still file once."""
     c = cast()
     citizen = factories.citizen()  # phone not verified
     api = as_user(citizen)

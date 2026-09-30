@@ -10,8 +10,18 @@ Passwords are hashed with Argon2id, which is slow on purpose. When offices open,
 
 The same image runs twice: `api` for general traffic and `api-auth` for every route that hashes a password (login, register, password set and reset, two-step verify). Nginx routes by path. A test runs during the whole suite and fails if any request hashes a password on a path Nginx does not send to `api-auth`, so a new endpoint cannot quietly break the split.
 
+## Alternatives considered
+
+- **A faster hash** (fewer Argon2 iterations, or bcrypt at a low cost). Buys throughput by making every stolen hash cheaper to crack. The slowness is the protection.
+- **Rate-limit logins harder.** Stops an attacker; does nothing for the real officers and citizens all logging in at 9 a.m.
+- **Async workers.** Hashing is CPU work; an event loop waits on it just the same.
+
 ## Consequences
 
 - A login surge queues on its own pool. In the live load test at 15 logins a second, the median login took 58 ms and the median page 15 ms; on two shared vCPUs the pools still compete for CPU, so separate hosts are the next step at higher load.
 - Two worker pools to size instead of one.
 - The route list exists in two places (Nginx and the code). The test keeps them in step.
+
+## What would change this
+
+Load where the two pools compete for the same CPUs: the next step is `api-auth` on its own host, which needs only a change to Nginx's upstream.

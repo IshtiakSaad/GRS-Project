@@ -120,7 +120,7 @@ Two kinds, both checked every night at 02:00 Dhaka (cron from `bootstrap-server.
 - **Continuous, off the server.** PostgreSQL ships each WAL segment to the off-host bucket (`OFFSITE_S3_BUCKET`, Object Lock) at least once a minute, and `deploy/scripts/backup.sh` adds a base backup there nightly, keeping 7. `deploy/scripts/pitr-check.sh` then restores from the bucket alone, in a throwaway container, to a named point it has just marked, checks row counts and verifies the audit chain in the copy. CI runs the same drill on every push.
 - **Logical, on the server.** `backup.sh` also writes a `pg_dump` to `/var/backups/grs` (7 days); `restore-check.sh` restores it into a scratch database and checks it.
 
-The server reaches the bucket through its instance role (`grs-server`), which can add objects but not delete versions or change locks. Nothing to rotate; nothing stored on the server.
+The server reaches the bucket through its instance role (`grs-server`), which can add objects but not delete versions or change locks. Nothing to rotate; nothing stored on the server. To move a server from a stand-in bucket to the real one, set `OFFSITE_S3_BUCKET` and `OFFSITE_S3_REGION`, leave `OFFSITE_S3_ENDPOINT` and the two keys empty, restart `postgres`, `worker` and `offsite-init`, take a base backup (`backup.sh`), and run `pitr-check.sh` once by hand.
 
 ```bash
 C="docker compose -f docker-compose.yml -f docker-compose.prod.yml"
