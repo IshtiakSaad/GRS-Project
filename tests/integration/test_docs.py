@@ -16,8 +16,23 @@ def test_openapi_schema_is_served(client):
     assert b"openapi" in response.content
 
 
-def test_swagger_ui_is_served(client):
-    assert client.get("/api/docs/").status_code == 200
+def test_the_reference_page_loads_nothing_from_another_origin(client):
+    response = client.get("/api/docs/")
+    assert response.status_code == 200
+    assert b'src="/vendor/scalar/standalone.js"' in response.content
+    csp = response["Content-Security-Policy"]
+    assert "script-src 'self';" in csp and "connect-src 'self';" in csp
+    assert "http" not in csp  # no other origin, for scripts, fonts or calls
+
+
+def test_every_tag_is_introduced_in_reading_order(schema):
+    listed = [tag["name"] for tag in schema["tags"]]
+    used = {tag for path in schema["paths"].values() for op in path.values() for tag in op["tags"]}
+    assert used == set(listed)
+    assert listed[0] == "auth" and listed[-1] == "demo"
+    assert all(tag["description"] and tag["x-displayName"] for tag in schema["tags"])
+    grouped = [name for group in schema["x-tagGroups"] for name in group["tags"]]
+    assert grouped == listed
 
 
 def test_the_schema_is_valid_and_has_no_warnings(tmp_path):
@@ -25,9 +40,9 @@ def test_the_schema_is_valid_and_has_no_warnings(tmp_path):
     call_command("spectacular", "--validate", "--fail-on-warn", "--file", tmp_path / "s.yaml")
 
 
-def test_swagger_can_log_in(schema):
-    """Without a security scheme, Swagger UI has no Authorize button and a reader cannot
-    try any endpoint past login."""
+def test_the_reference_can_log_in(schema):
+    """Without a security scheme, the reference page has nowhere to paste a token and a reader
+    cannot try any endpoint past login."""
     scheme = schema["components"]["securitySchemes"]["bearerAuth"]
     assert (scheme["type"], scheme["scheme"]) == ("http", "bearer")
     assert {"bearerAuth": []} in schema["paths"]["/api/v1/requests"]["get"]["security"]
@@ -65,3 +80,18 @@ def test_error_codes_are_documented(schema):
     assert "POSSIBLE_DUPLICATE" in {e["value"]["error"]["code"] for e in examples}
     login = schema["paths"]["/api/v1/auth/login"]["post"]["responses"]
     assert "`LOGIN_DELAYED`" in login["429"]["description"]
+
+
+def test_every_operation_has_a_title_and_no_title_is_stale(schema):
+    from config.api_docs import SUMMARIES
+
+    operations = {f"{m.upper()} {p}" for p, ops in schema["paths"].items() for m in ops}
+    assert operations == set(SUMMARIES)
+    assert all(op["summary"] for ops in schema["paths"].values() for op in ops.values())
+
+
+def test_no_operation_borrows_a_base_class_docstring(schema):
+    descriptions = [
+        op.get("description", "") for ops in schema["paths"].values() for op in ops.values()
+    ]
+    assert not any(d.startswith("No login;") for d in descriptions)

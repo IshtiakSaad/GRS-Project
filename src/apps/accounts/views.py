@@ -4,7 +4,7 @@ from django.conf import settings
 from django.http import Http404
 from django.utils import translation
 from django.utils.translation import gettext as _
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import OpenApiExample, extend_schema
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -126,6 +126,33 @@ class LoginView(PublicView):
         },
         description="Returns tokens, or, for accounts with two-step login, `mfa_token` to "
         "exchange at /auth/2fa/verify. 429 carries Retry-After.",
+        examples=[
+            OpenApiExample(
+                "A demo citizen",
+                value={"phone": "+8801000000102", "password": "demo-password-2026"},
+                request_only=True,
+            ),
+            OpenApiExample(
+                "Logged in",
+                value={
+                    "device_token": "Z1Vb…",
+                    "mfa_required": False,
+                    "access": "eyJhbGciOiJIUzI1NiIsImtpZCI6ImsxIn0…",
+                    "refresh": "nq8Xw…",
+                    "session_id": "0199a3c1-5b7e-7c41-9d2e-3f6a8b1c2d4e",
+                    "token_type": "Bearer",
+                    "expires_in": 600,
+                },
+                response_only=True,
+                status_codes=["200"],
+            ),
+            OpenApiExample(
+                "Two-step login needed (administrators)",
+                value={"device_token": "Z1Vb…", "mfa_required": True, "mfa_token": "eyJ0…"},
+                response_only=True,
+                status_codes=["200"],
+            ),
+        ],
     )
     def post(self, request):
         data = _input(serializers.LoginIn, request)

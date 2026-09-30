@@ -4,6 +4,8 @@ from pathlib import Path
 
 import environ
 
+from config import api_docs
+
 SRC_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env()
@@ -246,12 +248,16 @@ REST_FRAMEWORK = {
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "Government Service Request API",
-    "DESCRIPTION": (
-        "Citizens file service requests, officers work them, administrators oversee them. "
-        'Errors use one envelope: `{"error": {"code", "message", "fields", '
-        '"request_id"}}`.'
-    ),
-    "VERSION": "1.0.0",
+    "DESCRIPTION": api_docs.DESCRIPTION,
+    "VERSION": "v1",  # the API's version, as in /api/v1/; releases are tagged in git
+    "TAGS": api_docs.TAGS,
+    "EXTENSIONS_ROOT": {"x-tagGroups": api_docs.TAG_GROUPS},
+    # Keep the order the routes are declared in (register, verify, log in, …), not A to Z.
+    "SORT_OPERATIONS": False,
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+        "config.api_docs.add_summaries",
+    ],
     "SERVE_INCLUDE_SCHEMA": False,
     "COMPONENT_SPLIT_REQUEST": True,
     # Two choice sets share the field name `reason_code`; name each after what it means.

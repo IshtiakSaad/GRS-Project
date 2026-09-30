@@ -1,4 +1,4 @@
-"""Tells the OpenAPI schema how to log in, so Swagger UI offers "Authorize" for Bearer tokens.
+"""Tells the OpenAPI schema how to log in, so the API reference offers a Bearer field for tokens.
 
 Loaded from AccountsConfig.ready(): drf-spectacular finds extensions by import.
 """
