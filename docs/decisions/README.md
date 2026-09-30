@@ -26,6 +26,7 @@ Each record follows one choice that shapes the system. It covers what forced the
 | 13 | [A phone number is the account](0013-a-phone-number-is-the-account.md) |
 | 14 | [How long a login lasts depends on whose device it is](0014-sessions-follow-the-device.md) |
 | 15 | [Tracking numbers are made to be read aloud](0015-tracking-numbers-are-read-aloud.md) |
+| 18 | [Email reaches real inboxes, and verification mail is capped](0018-email-reaches-real-inboxes.md) |
 | 7 | [Files go straight to object storage and are checked afterwards](0007-uploads-go-straight-to-storage.md) |
 | 9 | [The web app is static files served by the same Nginx](0009-static-web-app.md) |
 

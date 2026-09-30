@@ -53,11 +53,14 @@ Each row starts with something we found about the problem ([problem.md](problem.
 | A 6-digit code can be guessed | 5 attempts, 10 minutes, a cooldown and an hourly cap | `accounts/otp.py` | `test_five_wrong_codes_burn_the_code`, `test_resend_has_a_cooldown_and_an_hourly_cap` |
 | An administrator's password alone is not enough | TOTP on every admin session; a stolen token cannot enrol | `accounts/` | `test_admin_endpoints_need_a_two_step_session`, `test_a_stolen_access_token_cannot_enrol_two_step_login` |
 | A file's name and label say nothing about its content | ClamAV scan and type read from the bytes before any download | `collab/verification.py`, `collab/scanning.py` | `test_the_scanner_rejects_malware_even_disguised_as_a_pdf`, `test_the_type_comes_from_the_bytes_not_the_label`; real ClamAV in CI (`test_clamd.py`) |
+| Anyone can type any address, so a confirmation email is the one message a stranger can aim at a third party | Three per account a day, a site-wide daily cap below the provider's quota, counted in PostgreSQL ([decision 18](decisions/0018-email-reaches-real-inboxes.md)) | `accounts/services.py` | `test_an_account_gets_three_verification_emails_a_day`, `test_verification_emails_stop_for_everyone_at_the_daily_cap` |
+| Confirming an address means proving someone reads it | A signed, expiring link to that inbox only, void once the address changes | `accounts/services.py` | `test_email_is_verified_by_the_emailed_token`, `test_email_token_is_void_once_the_address_changes` |
 
 ## When parts fail
 
 | Finding | Decision | Code | Proof |
 |---|---|---|---|
+| A catch-all inbox or a `localhost` link fails silently: mail is "sent" and nobody can use it | Production refuses to start with Mailpit, a non-https link, a placeholder sender or a relay without a key; links and sender follow the domain | `config/settings/prod.py` | `test_refuses_email_that_would_not_reach_anyone`, `test_links_and_sender_follow_the_domain` |
 | A status change the citizen never hears about did not happen, for them | Notifications are written in the same transaction ([decision 2](decisions/0002-notifications-through-an-outbox.md)) | `notifications/` | `test_a_row_the_broker_lost_is_enqueued_again`; chaos run: broker stopped under load, **401 of 401** delivered |
 | With the broker down, each web request waited on it (found by the chaos run) | A circuit breaker skips the broker for 30 s | `common/broker.py` | `test_after_a_failure_it_stops_trying_for_a_while`; submit p95 during the outage fell from 11.7 s to 99 ms in the same rehearsal, and was 32 ms on the live server |
 | A crashed worker must not lose or double-send a message | Leases with expiry; a cap on attempts | `notifications/delivery.py`, `sweeper.py` | `test_a_dead_workers_lease_is_recovered_and_counted`, `test_a_message_that_keeps_killing_workers_stops_at_the_cap` |

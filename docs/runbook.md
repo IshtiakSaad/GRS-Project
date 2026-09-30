@@ -174,12 +174,12 @@ Email leaves through an SMTP relay that delivers to real inboxes; the demo uses 
 
 1. At the provider, add the sending domain (`<domain>`) and add the DNS records it lists (SPF, DKIM, and the bounce MX) at the registrar. Wait until the provider shows the domain verified.
 2. Create an API key that can only send, and put it in the server's `.env` as `EMAIL_HOST_PASSWORD`. The other lines are written by `gen-env.sh`: `EMAIL_HOST=smtp.resend.com`, `EMAIL_PORT=465`, `EMAIL_USE_SSL=true`, `EMAIL_HOST_USER=resend`.
-3. Deploy. Links in emails point at `https://<domain>` and the sender is `no-reply@<domain>` unless `PUBLIC_BASE_URL` or `DEFAULT_FROM_EMAIL` say otherwise.
+3. Deploy. Links in emails point at `https://<domain>` and the sender is `Grievance & Service Requests <no-reply@<domain>>` unless `PUBLIC_BASE_URL` or `DEFAULT_FROM_EMAIL` say otherwise.
 4. Check: log in as a demo citizen, add your own address under Profile, and click the link that arrives.
 
 A new sending domain has no reputation, and a new `.xyz` domain starts with less than none: the first emails may land in spam however they are built. Add a DMARC record (`_dmarc.<domain>`, `v=DMARC1; p=none;`) and mark the first messages "not spam"; placement improves as the domain sends mail people open. The emails do their part: a sender name, an HTML part beside the text, and no bare token.
 
-A verification email goes to whatever address someone types, so it is the one message a stranger can aim at a third party. Each account gets three a day, and the whole site `EMAIL_VERIFY_DAILY_CAP` (60), below the provider's quota so a flood cannot use up what real users need. Both are counted from the outbox in PostgreSQL, so they hold when Redis is down. Status updates go only to addresses already verified.
+Why these choices: [decision 18](decisions/0018-email-reaches-real-inboxes.md). A verification email goes to whatever address someone types, so it is the one message a stranger can aim at a third party. Each account gets three a day, and the whole site `EMAIL_VERIFY_DAILY_CAP` (60), below the provider's quota so a flood cannot use up what real users need. Both are counted from the outbox in PostgreSQL, so they hold when Redis is down. Status updates go only to addresses already verified.
 
 ## Alerts
 
@@ -197,4 +197,4 @@ For the outside check, set the repository variable `UPTIME_URL` (`https://<domai
 
 ## Public demo reset
 
-Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database, stored files, queues and demo email, then migrates and reseeds. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.
+Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database (including every email address anyone added), stored files and queues, then migrates and reseeds. Locally it also empties Mailpit. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.
