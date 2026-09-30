@@ -40,8 +40,11 @@ export default function Register() {
       <PageTitle>{t("auth.registerTitle")}</PageTitle>
       <Card>
         <form onSubmit={submit} className="space-y-4" noValidate>
-          <p className="text-sm text-slate-600">{t("auth.registerHint")}</p>
-          {DEMO && <Notice>{t("auth.demoCodes")}</Notice>}
+          {DEMO ? (
+            <Notice>{t("auth.demoMode")}</Notice>
+          ) : (
+            <p className="text-sm text-slate-600">{t("auth.registerHint")}</p>
+          )}
           <ErrorNotice error={error} />
           <TextInput
             label={t("common.fullName")}

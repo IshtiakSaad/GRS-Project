@@ -13,8 +13,9 @@ class PhoneField(serializers.CharField):
         "invalid_phone": _("Enter a Bangladeshi mobile number, for example 01712345678."),
         # Demo mode refuses every real number, so the example above would be refused too.
         "invalid_demo_phone": _(
-            "This demo accepts only numbers that start with 010, which no real phone uses. "
-            "For example 01012345678."
+            "This site runs in demo mode, which accepts only numbers that start with 010 "
+            "(no real phone has one), for example 01012345678. Real numbers need a live "
+            "deployment with an SMS provider."
         ),
     }
 

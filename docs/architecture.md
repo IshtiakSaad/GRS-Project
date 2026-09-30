@@ -8,7 +8,7 @@ flowchart LR
   nginx -->|password routes| auth[api-auth<br/>gunicorn pool]
   nginx -->|everything else| api[api<br/>gunicorn pool]
   phone -.->|signed upload / download| files[(Object storage<br/>SeaweedFS, S3 API)]
-  nginx -. files.domain .-> files
+  nginx -.->|files subdomain| files
 
   api --> pg[(PostgreSQL<br/>source of truth)]
   auth --> pg

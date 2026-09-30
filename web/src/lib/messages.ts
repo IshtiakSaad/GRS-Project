@@ -5,8 +5,8 @@ export const messages = {
   "app.name": ["Grievance & Service Requests", "অভিযোগ ও সেবা আবেদন"],
   "app.short": ["GRS", "জিআরএস"],
   "app.demo": [
-    "Public demo: synthetic data only, reset every night.",
-    "পাবলিক ডেমো: শুধু কৃত্রিম তথ্য, প্রতি রাতে মুছে ফেলা হয়।",
+    "Demo mode: synthetic data, reset every night; only numbers starting with 010.",
+    "ডেমো মোড: কৃত্রিম তথ্য, প্রতি রাতে মুছে ফেলা হয়; শুধু ০১০ দিয়ে শুরু নম্বর।",
   ],
   "app.smsInbox": ["Demo SMS inbox", "ডেমো এসএমএস ইনবক্স"],
   "app.apiDocs": ["API docs", "এপিআই ডকস"],
@@ -89,10 +89,7 @@ export const messages = {
   "auth.loginTitle": ["Log in", "লগইন করুন"],
   "auth.phoneHint": ["e.g. 01712345678", "যেমন ০১৭১২৩৪৫৬৭৮"],
   // The demo refuses every real number: say so before anyone types theirs.
-  "auth.phoneHintDemo": [
-    "Demo: use any number that starts with 010, e.g. 01012345678. No real phone has one.",
-    "ডেমো: ০১০ দিয়ে শুরু যেকোনো নম্বর দিন, যেমন ০১০১২৩৪৫৬৭৮। কোনো আসল ফোনে এমন নম্বর নেই।",
-  ],
+  "auth.phoneHintDemo": ["Demo mode: a number starting with 010, e.g. 01012345678", "ডেমো মোড: ০১০ দিয়ে শুরু নম্বর, যেমন ০১০১২৩৪৫৬৭৮"],
   "auth.trustPersonal": ["This is my own device: keep me logged in", "এটি আমার নিজের ডিভাইস: লগইন রাখুন"],
   "auth.trustHint": [
     "Leave unticked on a shared or public computer.",
@@ -137,9 +134,11 @@ export const messages = {
     "যে এসএমএস থেকে এখানে এসেছেন তার কোডটি দিন, আর একটি পাসওয়ার্ড বেছে নিন।",
   ],
   "auth.setDone": ["Password set. Log in with it.", "পাসওয়ার্ড ঠিক হয়েছে। এটি দিয়ে লগইন করুন।"],
-  "auth.demoCodes": [
-    "Demo: SMS are not really sent. Open the demo inbox to read the code.",
-    "ডেমো: এসএমএস আসলে পাঠানো হয় না। কোড দেখতে ডেমো ইনবক্স খুলুন।",
+  // Shown wherever a phone number is typed: the demo refuses every real number, so say why
+  // before anyone types theirs.
+  "auth.demoMode": [
+    "This site runs in demo mode. It accepts only numbers that start with 010, which no real phone has, and sends no SMS: codes appear on screen. A live deployment with an SMS provider accepts every Bangladeshi number.",
+    "সাইটটি ডেমো মোডে চলছে। এখানে শুধু ০১০ দিয়ে শুরু নম্বর চলে, যা কোনো আসল ফোনে নেই, আর কোনো এসএমএস পাঠানো হয় না: কোড স্ক্রিনেই দেখা যায়। এসএমএস সেবাসহ লাইভ ডিপ্লয়মেন্টে যেকোনো বাংলাদেশি নম্বর চলে।",
   ],
 
   // --- demo SMS ----------------------------------------------------------------------------

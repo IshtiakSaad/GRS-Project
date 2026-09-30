@@ -79,6 +79,7 @@ export function PasswordCode({ setup = false }: { setup?: boolean }) {
         {!sent ? (
           <form onSubmit={send} className="space-y-4" noValidate>
             <p className="text-sm text-slate-600">{t("auth.resetHint")}</p>
+            {DEMO && <Notice>{t("auth.demoMode")}</Notice>}
             <ErrorNotice error={error} />
             {phoneInput}
             <Button type="submit" busy={busy} className="w-full">
