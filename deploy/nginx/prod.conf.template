@@ -1,10 +1,9 @@
-# Production: TLS on three names, filled in from GRS_DOMAIN when the container starts
+# Production: TLS on two names, filled in from GRS_DOMAIN when the container starts
 # (the nginx image runs envsubst on /etc/nginx/templates/*.template; only defined
 # variables are replaced, so Nginx's own $variables are left alone).
 #
 #   ${GRS_DOMAIN}        the API and its Swagger UI
 #   files.${GRS_DOMAIN}  object storage: presigned upload and download links point here
-#   mail.${GRS_DOMAIN}   Mailpit, where demo email lands (demo only; synthetic data)
 
 include /etc/nginx/grs/http.conf;
 
@@ -72,25 +71,6 @@ server {
         add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
         set $storage http://storage:8333;
         proxy_pass $storage;
-        limit_req zone=per_ip burst=50 nodelay;
-    }
-}
-
-server {
-    listen 443 ssl;
-    http2 on;
-    server_name mail.${GRS_DOMAIN};
-
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    access_log /dev/stdout json;
-
-    location / {
-        set $mailpit http://mailpit:8025;
-        proxy_pass $mailpit;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;   # the inbox updates over a websocket
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
         limit_req zone=per_ip burst=50 nodelay;
     }
 }

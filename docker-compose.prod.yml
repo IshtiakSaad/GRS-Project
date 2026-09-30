@@ -5,6 +5,7 @@
 # - no database, Redis or storage port is published; only Nginx listens, on 80 and 443
 # - Nginx terminates TLS; certbot renews the certificate
 # - attachments are scanned by ClamAV, not the EICAR stand-in
+# - email goes out through a real SMTP relay; there is no Mailpit
 
 services:
   postgres:
@@ -21,8 +22,9 @@ services:
   storage:
     ports: !reset []
 
+  # Local only: production relays email to real inboxes (EMAIL_HOST in .env).
   mailpit:
-    ports: !reset []
+    profiles: ["local-mail"]
 
   clamav:
     profiles: !reset []
@@ -47,8 +49,6 @@ services:
     command: ["/bin/sh", "-c", "(while sleep 6h; do nginx -s reload; done) & exec /docker-entrypoint.sh nginx -g 'daemon off;'"]
     depends_on:
       storage:
-        condition: service_started
-      mailpit:
         condition: service_started
 
   # Checks the public address, through TLS, as a citizen reaches it.

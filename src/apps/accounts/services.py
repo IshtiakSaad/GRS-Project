@@ -22,7 +22,7 @@ from django.utils.translation import gettext as _
 from apps.audit import services as audit
 from apps.common.errors import AppError
 from apps.notifications import services as notifications
-from apps.notifications.models import Channel
+from apps.notifications.models import Channel, Notification
 
 from . import otp, sessions, throttle, tokens, totp
 from .models import OtpPurpose, RecoveryCode, RefreshSession, Role, User
@@ -419,10 +419,38 @@ def logout(family_id) -> None:
 # --- email (optional; verified by a signed link) ---------------------------------------------
 
 
+def _verification_emails_allowed(user: User) -> None:
+    """Refuse a new verification email past the account's or the site's daily allowance.
+
+    Counted from the outbox in PostgreSQL, not Redis: the allowance must hold when the cache is
+    down, since a verification email is the one message a stranger can aim at any address.
+    """
+    day = timedelta(days=1)
+    sent = Notification.objects.filter(
+        template="verify_email", created_at__gte=timezone.now() - day
+    ).values_list("created_at", flat=True)
+    for mine, allowance in (
+        (True, settings.EMAIL_VERIFY_PER_ACCOUNT),
+        (False, settings.EMAIL_VERIFY_DAILY_CAP),
+    ):
+        recent = sorted(sent.filter(recipient=user) if mine else sent)
+        if len(recent) >= allowance:
+            # The window reopens when the oldest counted email is a day old.
+            wait = max(1, int((recent[-allowance] + day - timezone.now()).total_seconds()))
+            message = (
+                _("Too many verification emails for this account today. Try again later.")
+                if mine
+                else _("Verification emails are paused for today. Try again tomorrow.")
+            )
+            raise AppError("RATE_LIMITED", message, 429, wait=wait)
+
+
 def set_email(user: User, email: str | None) -> None:
     email = (email or "").strip().lower() or None
     if email == user.email:
         return
+    if email:
+        _verification_emails_allowed(user)
     with transaction.atomic():
         user.email = email
         user.email_verified_at = None

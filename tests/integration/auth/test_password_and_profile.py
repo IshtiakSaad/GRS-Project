@@ -143,6 +143,50 @@ def test_email_token_is_void_once_the_address_changes(api, as_user):
     assert error_code(response) == "INVALID_CODE"
 
 
+def test_the_emailed_link_opens_the_public_site(as_user, settings):
+    settings.PUBLIC_BASE_URL = "https://grs.example.org"
+    as_user(_citizen()).patch("/api/v1/me", {"email": "rahima@example.com"}, format="json")
+    deliver_all()
+    assert "https://grs.example.org/verify-email#token=" in mail.outbox[0].body
+
+
+def test_an_account_gets_three_verification_emails_a_day(as_user):
+    user = _citizen()
+    client = as_user(user)
+    for n in range(3):
+        response = client.patch("/api/v1/me", {"email": f"try{n}@example.com"}, format="json")
+        assert response.status_code == 200
+    response = client.patch("/api/v1/me", {"email": "try3@example.com"}, format="json")
+    assert error_code(response) == "RATE_LIMITED"
+    assert int(response["Retry-After"]) > 23 * 3600
+    user.refresh_from_db()
+    assert user.email == "try2@example.com"  # the refused address was not taken either
+    # Clearing the address sends nothing, so it is never refused.
+    assert client.patch("/api/v1/me", {"email": ""}, format="json").status_code == 200
+
+
+def test_verification_emails_stop_for_everyone_at_the_daily_cap(as_user, settings):
+    settings.EMAIL_VERIFY_DAILY_CAP = 2
+    for n in range(2):
+        as_user(_citizen()).patch("/api/v1/me", {"email": f"u{n}@example.com"}, format="json")
+    response = as_user(_citizen()).patch("/api/v1/me", {"email": "u2@example.com"}, format="json")
+    assert error_code(response) == "RATE_LIMITED"
+    assert Notification.objects.filter(template="verify_email").count() == 2
+
+
+def test_verification_emails_older_than_a_day_do_not_count(as_user):
+    user = _citizen()
+    client = as_user(user)
+    for n in range(3):
+        client.patch("/api/v1/me", {"email": f"old{n}@example.com"}, format="json")
+    # Notification is partitioned on created_at, so move the rows by re-dating them in SQL.
+    Notification.objects.filter(recipient=user).update(
+        created_at=timezone.now() - timedelta(days=1, minutes=1)
+    )
+    response = client.patch("/api/v1/me", {"email": "new@example.com"}, format="json")
+    assert response.status_code == 200
+
+
 def test_email_used_by_another_account_is_refused(as_user):
     factories.citizen(email="taken@example.com")
     client = as_user(_citizen())

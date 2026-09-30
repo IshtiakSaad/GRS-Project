@@ -11,6 +11,20 @@ _secrets = [SECRET_KEY, *JWT_SIGNING_KEYS.values(), *FIELD_ENCRYPTION_KEYS, S3_S
 if any(marker in value for marker in _PLACEHOLDERS for value in _secrets):
     raise ImproperlyConfigured("placeholder secrets in production settings")
 
+# Links in emails and the sender address follow the domain unless set outright. A link to
+# localhost in a real inbox opens nothing, and Mailpit delivers nothing: refuse both.
+GRS_DOMAIN = env("GRS_DOMAIN")
+PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default=f"https://{GRS_DOMAIN}")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=f"no-reply@{GRS_DOMAIN}")
+if not PUBLIC_BASE_URL.startswith("https://") or "localhost" in PUBLIC_BASE_URL:
+    raise ImproperlyConfigured(f"PUBLIC_BASE_URL must be the public https URL: {PUBLIC_BASE_URL}")
+if (
+    EMAIL_HOST == "mailpit"
+    or "example." in DEFAULT_FROM_EMAIL
+    or (EMAIL_HOST_USER and not EMAIL_HOST_PASSWORD)
+):
+    raise ImproperlyConfigured("production email needs a real SMTP relay and sender (EMAIL_HOST)")
+
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 USE_X_FORWARDED_HOST = False
 SECURE_SSL_REDIRECT = False  # Nginx redirects; the health check reaches the app over plain HTTP

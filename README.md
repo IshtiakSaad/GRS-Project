@@ -51,7 +51,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
 | Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the secret is available on request) |
 
-Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email lands at https://mail.grs.root-access.xyz. The database is wiped and reseeded at 03:00 Dhaka time.
+Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email is real: add your own address under Profile and the verification link arrives in your inbox, sent through Resend from `no-reply@grs.root-access.xyz` (three verification emails per account a day, and a daily cap for the whole demo, since anyone can type any address). The database is wiped and reseeded at 03:00 Dhaka time.
 
 For the API: open https://grs.root-access.xyz/api/docs/. The reference starts with how to log in and the rules every endpoint follows, then lists the endpoints in the order a request meets them. Try `POST /api/v1/auth/login`, copy `access` from the answer into the **Bearer** field under Authentication, and every call you try after that is made as that user.
 
@@ -146,7 +146,7 @@ docker run --rm --network grs-project_default \
 |---|---|
 | Redis | Two instances split by how they may fail: a broker that never evicts, and a cache that may evict anything and fails open ([decision 4](docs/decisions/0004-two-redis-instances.md)) |
 | Celery | Notification delivery, file verification, deadline recompute, overdue escalation, audit sealing, cleanup |
-| Email notifications and email verification | Verification link by email; request updates by email once the address is verified (Mailpit in the demo) |
+| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo); Mailpit catches everything locally |
 | Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
 | Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
 | Frontend UI with live link | https://grs.root-access.xyz: 21 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |

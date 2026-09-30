@@ -14,11 +14,13 @@ PROJECT=$($COMPOSE config --format json | python3 -c 'import json,sys; print(jso
 
 # Whatever fails below, the site must not stay down: bring every service back on the way out.
 trap '$COMPOSE up -d >/dev/null 2>&1 || true' EXIT
+# Mailpit holds the demo's email only where email is not relayed for real (locally).
+MAIL=""; [ "${EMAIL_HOST:-mailpit}" = "mailpit" ] && MAIL=mailpit
 
-$COMPOSE stop api api-auth worker beat postgres storage redis-broker redis-cache mailpit
-$COMPOSE rm -f postgres storage redis-broker redis-cache mailpit
+$COMPOSE stop api api-auth worker beat postgres storage redis-broker redis-cache $MAIL
+$COMPOSE rm -f postgres storage redis-broker redis-cache $MAIL
 docker volume rm "${PROJECT}_pgdata" "${PROJECT}_storage"
-$COMPOSE up -d --wait postgres storage redis-broker redis-cache mailpit
+$COMPOSE up -d --wait postgres storage redis-broker redis-cache $MAIL
 $COMPOSE run --rm migrate
 $COMPOSE run --rm --no-deps api python manage.py seed_demo
 # Every service, including offsite-init, which recreates the off-host bucket if the wipe took
