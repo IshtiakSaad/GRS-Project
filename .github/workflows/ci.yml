@@ -55,13 +55,8 @@ jobs:
       # Every resolution goes to the review queue, so the review screens have work to test.
       - run: cp .env.example .env && echo "REVIEW_SAMPLE_RATE=1" >> .env
       - run: docker compose up -d --build --wait --wait-timeout 240
-      - name: Load demo data; keep the administrator's two-step secret for the tests
-        run: |
-          out=$(docker compose run --rm --no-deps api python manage.py seed_demo)
-          secret=$(echo "$out" | grep -o 'secret=[A-Z2-7]*' | head -1 | cut -d= -f2)
-          test -n "$secret"
-          echo "::add-mask::$secret"
-          echo "E2E_ADMIN_TOTP_SECRET=$secret" >> "$GITHUB_ENV"
+      - name: Load demo data
+        run: docker compose run --rm --no-deps api python manage.py seed_demo
       - working-directory: web
         run: |
           npm ci --no-audit --no-fund

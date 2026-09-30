@@ -169,3 +169,53 @@ def test_admin_endpoints_need_a_two_step_session(as_user, rf):
     assert not IsAdmin().has_permission(request, None)
     request.auth = {"mfa": True}
     assert IsAdmin().has_permission(request, None)
+
+
+# --- the public demo's administrator ----------------------------------------------------------
+
+
+def _demo_admin():
+    from apps.accounts import services
+
+    user, _, _ = services.create_admin("+8801000000001", "Demo Admin", PASSWORD)
+    return user
+
+
+def _second_step(api, user, code):
+    body = {"mfa_token": _password_step(api, user), "code": code}
+    return api.post("/api/v1/auth/2fa/verify", body, format="json")
+
+
+def test_the_demo_administrator_takes_the_fixed_code(api, settings):
+    """Reviewers reach the administrator's screens with the password, then 123456."""
+    settings.DEMO_MODE = True
+    admin = _demo_admin()
+    for _ in range(2):  # every time, not once
+        response = _second_step(api, admin, "123456")
+        assert response.status_code == 200
+    api.credentials(HTTP_AUTHORIZATION=f"Bearer {response.json()['access']}")
+    assert api.get("/api/v1/admin/stats").status_code == 200
+    assert RefreshSession.objects.filter(user=admin, mfa=True).count() == 2
+
+
+def test_the_fixed_code_does_nothing_outside_demo_mode(api, settings):
+    """Two locks: a live deployment refuses the demo administrator's 010 number outright, and
+    even with the first step already passed, the code is refused once demo mode is off."""
+    settings.DEMO_MODE = True
+    admin = _demo_admin()
+    mfa_token = _password_step(api, admin)
+
+    settings.DEMO_MODE = False
+    body = {"phone": admin.phone, "password": PASSWORD}
+    assert error_code(api.post("/api/v1/auth/login", body, format="json")) == "VALIDATION_ERROR"
+    body = {"mfa_token": mfa_token, "code": "123456"}
+    response = api.post("/api/v1/auth/2fa/verify", body, format="json")
+    assert error_code(response) == "INVALID_CODE"
+
+
+def test_the_fixed_code_works_for_no_other_administrator(api, settings):
+    settings.DEMO_MODE = True
+    other = factories.admin(totp_secret_encrypted=totp.encrypt_secret(totp.new_secret()))
+    other.set_password(PASSWORD)
+    other.save()
+    assert error_code(_second_step(api, other, "123456")) == "INVALID_CODE"

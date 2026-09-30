@@ -25,7 +25,7 @@ flowchart LR
   worker -->|audit checkpoints, locked| s3
 ```
 
-One server, one Compose file; every part can move to its own host without code changes. [21 more diagrams](docs/diagrams.md), from the request state machine to the audit chain and the nightly restore drill.
+One server, one Compose file; every part can move to its own host without code changes. Two more pictures below; [all 21 diagrams](docs/diagrams.md) go from sign-up and two-step login to the audit chain and the nightly restore drill.
 
 | | |
 |---|---|
@@ -55,6 +55,53 @@ One server, one Compose file; every part can move to its own host without code c
 
 The full picture, with the reasoning, is in [docs/problem.md](docs/problem.md).
 
+### A request's life
+
+Eight states, and who may move a request between them. The same table drives the API, a test walks every cell of it, and PostgreSQL refuses any row that no action could have produced.
+
+```mermaid
+stateDiagram-v2
+  [*] --> DRAFT: citizen creates
+  DRAFT --> SUBMITTED: submit<br/>tracking number and deadline set
+  SUBMITTED --> ASSIGNED: officer takes the next one<br/>or admin assigns
+  ASSIGNED --> IN_PROGRESS: officer starts
+  IN_PROGRESS --> AWAITING_CITIZEN: officer asks the citizen<br/>deadline clock pauses
+  AWAITING_CITIZEN --> IN_PROGRESS: citizen answers
+  IN_PROGRESS --> RESOLVED: officer resolves
+  RESOLVED --> SUBMITTED: citizen reopens within 30 days<br/>or admin overturns after review
+  REJECTED --> SUBMITTED: reopen or overturn
+  state "Any open state" as OPEN
+  OPEN --> REJECTED: officer or admin rejects, with a reason
+  OPEN --> WITHDRAWN: citizen withdraws
+  WITHDRAWN --> [*]
+```
+
+### Why a submission is never lost or doubled
+
+A phone on 3G often sends a request and never hears the answer, so it retries. The retry gets the first answer back. Everything the submission changes commits together, including the message that announces it, so a crashed queue can delay that message but never lose it.
+
+```mermaid
+sequenceDiagram
+  participant P as Phone
+  participant A as API
+  participant D as PostgreSQL
+  participant Q as Queue and worker
+  P->>A: submit, with an Idempotency-Key
+  alt key seen before
+    A-->>P: the stored answer: same tracking number, no second request
+  else first time
+    rect rgb(235, 245, 235)
+      Note over A,D: one transaction
+      A->>D: lock the request, check the action is allowed
+      A->>D: tracking number with a check digit, deadline in working days
+      A->>D: timeline event, audit row, notification row, stored answer
+    end
+    A-->>P: tracking number, such as 26-0000042-7
+    A->>Q: after commit: send the message
+    Note over Q,D: Queue down? A sweeper finds the row in PostgreSQL<br/>within 30 s of recovery. Tested: 401 of 401 delivered.
+  end
+```
+
 ---
 
 ## Try it
@@ -69,7 +116,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Birth and Death Registration | `+8801000000011`, `+8801000000012` | `demo-password-2026` |
 | Officer, Land Office | `+8801000000013` | `demo-password-2026` |
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
-| Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the key for your authenticator app is in the submission email) |
+| Administrator | `+8801000000001` | `demo-password-2026`, then the two-step code `123456` |
 
 The live site runs in **demo mode**: it sends no SMS, shows codes on screen instead, and so accepts only numbers on the unassigned `+880 10` prefix, which no real phone has. Your own number is refused, and the screen says why. A deployment with an SMS provider turns demo mode off, accepts every Bangladeshi operator, and refuses the `010` prefix ([limitations](docs/limitations.md#1-the-live-demo-runs-in-demo-mode)). Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
 
@@ -98,11 +145,10 @@ docker compose run --rm --no-deps api python manage.py seed_demo
 | Web app | http://localhost:8080 |
 | API docs | http://localhost:8080/api/docs/ |
 | Health | http://localhost:8080/health/ready |
-| Email inbox (Mailpit) | http://localhost:8025 |
 
-`seed_demo` prints the demo password and the administrator's two-step secret; add the secret to any authenticator app. Locally, uploads are checked by a small stand-in that flags the EICAR test file just as ClamAV does, so the stack runs without ClamAV's 1.5 GB of memory; production uses ClamAV itself, and `docker compose --profile full up -d clamav` starts it locally.
+`seed_demo` loads the same demo accounts as the live site: every password is `demo-password-2026`, and the administrator's two-step code is `123456`. Locally, uploads are checked by a small stand-in that flags the EICAR test file just as ClamAV does, so the stack runs without ClamAV's 1.5 GB of memory; production uses ClamAV itself, and `docker compose --profile full up -d clamav` starts it locally.
 
-To work on the web app with hot reload, run `npm ci && npm run dev` in `web/` (http://localhost:3000; it proxies `/api` to the stack on :8080). The end-to-end tests run against the stack: `E2E_ADMIN_TOTP_SECRET=<secret from seed_demo> npx playwright test`.
+To work on the web app with hot reload, run `npm ci && npm run dev` in `web/` (http://localhost:3000; it proxies `/api` to the stack on :8080). The end-to-end tests run against the stack: `npx playwright test`.
 
 Run the backend tests against the running stack:
 
@@ -167,7 +213,7 @@ docker run --rm --network grs-project_default \
 |---|---|
 | Redis | Two instances split by how they may fail: a broker that never evicts, and a cache that may evict anything and fails open ([decision 4](docs/decisions/0004-two-redis-instances.md)) |
 | Celery | Notification delivery, file verification, deadline recompute, overdue escalation, audit sealing, cleanup |
-| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo); Mailpit catches everything locally |
+| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo) |
 | Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
 | Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
 | Frontend UI with live link | https://grs.root-access.xyz: 22 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
