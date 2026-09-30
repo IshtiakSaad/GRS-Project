@@ -17,12 +17,18 @@ trap '$COMPOSE up -d >/dev/null 2>&1 || true' EXIT
 # Mailpit holds the demo's email only where email is not relayed for real (locally).
 MAIL=""; [ "${EMAIL_HOST:-mailpit}" = "mailpit" ] && MAIL=mailpit
 
+# The administrator's two-step key survives the reset: reviewers are sent it once, with the
+# submission. Read it still encrypted (only the app's key decrypts it); empty on a first run.
+GRS_DEMO_ADMIN_KEY=$($COMPOSE exec -T -u postgres postgres psql -d "$POSTGRES_DB" -tAc \
+  "SELECT totp_secret_encrypted FROM app_user WHERE phone = '+8801000000001'" 2>/dev/null || true)
+export GRS_DEMO_ADMIN_KEY
+
 $COMPOSE stop api api-auth worker beat postgres storage redis-broker redis-cache $MAIL
 $COMPOSE rm -f postgres storage redis-broker redis-cache $MAIL
 docker volume rm "${PROJECT}_pgdata" "${PROJECT}_storage"
 $COMPOSE up -d --wait postgres storage redis-broker redis-cache $MAIL
 $COMPOSE run --rm migrate
-$COMPOSE run --rm --no-deps api python manage.py seed_demo
+$COMPOSE run --rm --no-deps -e GRS_DEMO_ADMIN_KEY api python manage.py seed_demo
 # Every service, including offsite-init, which recreates the off-host bucket if the wipe took
 # it (where it is a stand-in on this server's storage). Report ok only once all are healthy.
 $COMPOSE up -d --wait

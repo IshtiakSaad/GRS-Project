@@ -197,4 +197,4 @@ For the outside check, set the repository variable `UPTIME_URL` (`https://<domai
 
 ## Public demo reset
 
-Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database (including every email address anyone added), stored files and queues, then migrates and reseeds. Locally it also empties Mailpit. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.
+Nightly at 03:00 Dhaka: `deploy/scripts/reset-demo.sh` deletes the database (including every email address anyone added), stored files and queues, then migrates and reseeds. The demo administrator keeps the same two-step key: the script reads it, still encrypted, before the wipe, and the seed rebuilds the account with it, so the key sent to reviewers keeps working. Recovery codes are new each night. Locally it also empties Mailpit. It refuses to run unless `DEMO_MODE=true`. Log: `/var/log/grs-reset.log`.

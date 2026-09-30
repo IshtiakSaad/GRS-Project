@@ -57,6 +57,17 @@ CITIZENS = [
 ]
 
 
+def _kept_admin_key() -> str | None:
+    """The demo administrator's two-step key from before the nightly reset.
+
+    reset-demo.sh reads it, still encrypted, before it wipes the database, and passes it here in
+    GRS_DEMO_ADMIN_KEY. Reviewers are sent the key once, so it must outlive the reset. If it
+    cannot be read (none yet, or the encryption keys changed), a new one is made.
+    """
+    encrypted = os.environ.get("GRS_DEMO_ADMIN_KEY", "").strip()
+    return totp.decrypt_secret(encrypted) if encrypted else None
+
+
 class Command(BaseCommand):
     help = "Load synthetic demo data: directory, staff, citizens and requests in every state."
 
@@ -67,15 +78,19 @@ class Command(BaseCommand):
             self.stdout.write("Demo data is already loaded.")
             return
         password = os.environ.get("GRS_DEMO_PASSWORD") or DEFAULT_PASSWORD
+        kept = _kept_admin_key()
         with transaction.atomic():
             self._directory()
-            admin, secret, codes = accounts.create_admin(*ADMIN, password)
+            admin, secret, codes = accounts.create_admin(*ADMIN, password, kept)
             officers = self._officers(password)
             citizens = self._citizens(password)
             self._requests(admin, officers, citizens)
 
         self.stdout.write(f"Demo data loaded. Every account's password: {password}")
-        self.stdout.write(f"Administrator {ADMIN[0]}; two-step login secret (authenticator app):")
+        self.stdout.write(
+            f"Administrator {ADMIN[0]}; two-step login secret (authenticator app)"
+            + (", kept from before the reset:" if kept else ", new:")
+        )
         self.stdout.write(f"  {totp.provisioning_uri(secret, ADMIN[0])}")
         self.stdout.write(f"  recovery code: {codes[0]}")
         self.stdout.write("Officers: " + ", ".join(phone for phone, _, _ in OFFICERS))
