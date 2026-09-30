@@ -49,7 +49,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Birth and Death Registration | `+8801000000011`, `+8801000000012` | `demo-password-2026` |
 | Officer, Land Office | `+8801000000013` | `demo-password-2026` |
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
-| Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the secret is available on request) |
+| Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the key for your authenticator app is in the submission email) |
 
 Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
 

@@ -381,9 +381,9 @@ def _new_recovery_code() -> str:
     return f"{raw[:5]}-{raw[5:]}"
 
 
-def enrol_admin_totp(user: User) -> tuple[str, list[str]]:
+def enrol_admin_totp(user: User, secret: str | None = None) -> tuple[str, list[str]]:
     """For the createadmin command: an admin cannot exist without a second factor."""
-    secret = totp.new_secret()
+    secret = secret or totp.new_secret()
     codes = [_new_recovery_code() for _ in range(RECOVERY_CODES)]
     user.totp_secret_encrypted = totp.encrypt_secret(secret)
     user.totp_enabled_at = timezone.now()
@@ -525,13 +525,16 @@ def verify_email(token) -> None:
 # --- administration ---------------------------------------------------------------------------
 
 
-def create_admin(phone: str, full_name: str, password: str) -> tuple[User, str, list[str]]:
-    """Used by the createadmin management command on the host."""
+def create_admin(
+    phone: str, full_name: str, password: str, totp_secret: str | None = None
+) -> tuple[User, str, list[str]]:
+    """Used by the createadmin management command on the host, and by the demo seed, which
+    passes the key the demo administrator already had so that a reset does not change it."""
     check_password_rules(password, phone, full_name)
     with transaction.atomic():
         user = User(phone=phone, full_name=full_name, role=Role.ADMIN)
         user.set_password(password)
-        secret, codes = enrol_admin_totp(user)
+        secret, codes = enrol_admin_totp(user, totp_secret)
         user.phone_verified_at = timezone.now()
         user.save()
         _store_recovery_codes(user, codes)
