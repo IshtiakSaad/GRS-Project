@@ -5,6 +5,8 @@ a status or an instruction: never names, descriptions or other personal detail (
 Keep SMS within one Unicode segment (70 characters) where possible.
 """
 
+from html import escape
+
 TEMPLATES = {
     "otp": {
         "bn": "আপনার যাচাই কোড {code}। ১০ মিনিট বৈধ। কাউকে জানাবেন না।",
@@ -25,8 +27,19 @@ TEMPLATES = {
     },
     "verify_email": {
         "subject": {"bn": "ইমেইল যাচাই করুন", "en": "Verify your email"},
-        "bn": "আপনার ইমেইল যাচাই করতে এই লিংকে যান (২৪ ঘণ্টা বৈধ):\n{link}\n\nকোড: {token}",
-        "en": "To verify your email, open this link (valid 24 hours):\n{link}\n\nCode: {token}",
+        # No raw token in the text: the link carries it, and a long random string is what spam
+        # filters look for.
+        "bn": (
+            "কেউ (সম্ভবত আপনি) একটি GRS অ্যাকাউন্টে এই ইমেইল ঠিকানা যোগ করেছেন। নিশ্চিত করতে "
+            "২৪ ঘণ্টার মধ্যে এই লিংকে যান:\n{link}\n\n"
+            "এটি আপনি না করে থাকলে এই ইমেইল উপেক্ষা করুন: লিংক না খুললে কিছুই বদলাবে না।"
+        ),
+        "en": (
+            "Someone (most likely you) added this address to a GRS account. To confirm it, open "
+            "this link within 24 hours:\n{link}\n\n"
+            "If this wasn't you, ignore this email: nothing changes unless the link is opened."
+        ),
+        "button": {"bn": "ইমেইল নিশ্চিত করুন", "en": "Confirm email"},
     },
     # Requests: the tracking number and what happened, nothing else.
     "request_submitted": {
@@ -75,6 +88,28 @@ SUBJECT = {"bn": "আবেদন {tracking_no}", "en": "Request {tracking_no}"}
 
 # Payloads of these templates hold a secret; it is erased once the message has gone out.
 SENSITIVE = {"otp", "verify_email"}
+
+
+def render_html(template: str, language: str, payload: dict) -> str | None:
+    """An HTML part for emails that carry a link to press, beside the text part. Mail clients
+    and spam filters both expect the pair from a real sender; a bare text email with a long
+    link looks like the other kind."""
+    entry = TEMPLATES[template]
+    if "button" not in entry or "link" not in payload:
+        return None
+    lang = language if language in ("bn", "en") else "bn"
+    text = entry[lang].format(**payload).split("\n")
+    link = escape(payload["link"])
+    return (
+        f'<!doctype html><html lang="{lang}"><body style="margin:0;padding:24px;'
+        'font-family:Arial,sans-serif;font-size:15px;line-height:1.5;color:#1e293b">'
+        f"<p>{escape(text[0])}</p>"
+        f'<p><a href="{link}" style="display:inline-block;padding:10px 18px;border-radius:6px;'
+        f'background:#0f766e;color:#ffffff;text-decoration:none">{escape(entry["button"][lang])}'
+        "</a></p>"
+        f'<p style="font-size:13px;color:#475569">{escape(text[-1])}</p>'
+        "</body></html>"
+    )
 
 
 def render(template: str, language: str, payload: dict) -> tuple[str, str]:

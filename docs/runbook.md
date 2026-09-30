@@ -177,6 +177,8 @@ Email leaves through an SMTP relay that delivers to real inboxes; the demo uses 
 3. Deploy. Links in emails point at `https://<domain>` and the sender is `no-reply@<domain>` unless `PUBLIC_BASE_URL` or `DEFAULT_FROM_EMAIL` say otherwise.
 4. Check: log in as a demo citizen, add your own address under Profile, and click the link that arrives.
 
+A new sending domain has no reputation, and a new `.xyz` domain starts with less than none: the first emails may land in spam however they are built. Add a DMARC record (`_dmarc.<domain>`, `v=DMARC1; p=none;`) and mark the first messages "not spam"; placement improves as the domain sends mail people open. The emails do their part: a sender name, an HTML part beside the text, and no bare token.
+
 A verification email goes to whatever address someone types, so it is the one message a stranger can aim at a third party. Each account gets three a day, and the whole site `EMAIL_VERIFY_DAILY_CAP` (60), below the provider's quota so a flood cannot use up what real users need. Both are counted from the outbox in PostgreSQL, so they hold when Redis is down. Status updates go only to addresses already verified.
 
 ## Alerts

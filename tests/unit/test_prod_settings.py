@@ -31,7 +31,7 @@ def _load(**overrides):
     inherited = ("EMAIL_", "PUBLIC_", "DEFAULT_FROM_", "DJANGO_SETTINGS")
     env = {k: v for k, v in os.environ.items() if not k.startswith(inherited)}
     env |= SERVER_ENV | overrides
-    code = "import config.settings.prod as s; print(s.PUBLIC_BASE_URL, s.DEFAULT_FROM_EMAIL)"
+    code = "import config.settings.prod as s; print(s.PUBLIC_BASE_URL + '|' + s.DEFAULT_FROM_EMAIL)"
     return subprocess.run(  # noqa: S603 - a fixed command in our own interpreter
         [sys.executable, "-c", code],
         env={**env, "PYTHONPATH": str(SRC)},
@@ -44,7 +44,10 @@ def _load(**overrides):
 def test_links_and_sender_follow_the_domain():
     result = _load()
     assert result.returncode == 0, result.stderr
-    assert result.stdout.split() == ["https://grs.office.test", "no-reply@grs.office.test"]
+    assert result.stdout.strip().split("|") == [
+        "https://grs.office.test",
+        "GRS <no-reply@grs.office.test>",
+    ]
 
 
 @pytest.mark.parametrize(

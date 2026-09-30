@@ -198,7 +198,7 @@ test("a new citizen resets a forgotten password, then edits the profile", async 
   await page.getByLabel("Email").fill(`e2e-${run}@example.test`);
   await page.getByRole("button", { name: "Save" }).first().click();
   await expect(page.getByText("Saved.")).toBeVisible();
-  await expect(page.getByText("Not confirmed yet: check your inbox")).toBeVisible();
+  await expect(page.getByText("Not confirmed yet: open the link we emailed you.")).toBeVisible();
   await expect(page.getByText("This device")).toBeVisible();
 
   await page.getByLabel("Current password").fill(`${PASSWORD}-second`);
@@ -218,6 +218,8 @@ test("a new citizen resets a forgotten password, then edits the profile", async 
   }).toPass({ timeout: 30_000 });
   await page.goto(link);
   await expect(page.getByText("Email confirmed.")).toBeVisible();
+  await page.getByRole("link", { name: "Back to your profile" }).click();
+  await expect(page.getByText("✓ Email confirmed.")).toBeVisible();
 });
 
 test("the administrator adds an officer, sends a reset code, deactivates and reactivates", async ({ page }) => {
