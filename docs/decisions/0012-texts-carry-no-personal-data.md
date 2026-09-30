@@ -22,6 +22,7 @@ The rule is enforced where messages are built: templates take a fixed set of fie
 ## Consequences
 
 - A leaked, forwarded or shoulder-read text reveals that a request exists and its status, nothing more.
+- The companies that carry the messages (the SMS gateway, and the mail relay of [decision 18](0018-email-reaches-real-inboxes.md)) see a phone number or an address and that same status, nothing more.
 - The citizen has to log in to learn more. On a shared phone that is the point.
 - The texts are short enough to fit one segment, which also keeps the SMS bill down.
 

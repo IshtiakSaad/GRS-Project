@@ -22,7 +22,7 @@ flowchart LR
   worker --> files
   worker --> clam[clamav<br/>malware scan]
   worker --> sms[SMS provider]
-  worker --> mail[SMTP]
+  worker --> mail[SMTP relay<br/>Mailpit locally,<br/>Resend on the demo]
 
   standby[(PostgreSQL standby<br/>optional)] -.->|streaming| pg
   pg -->|WAL every minute,<br/>nightly base backup| offsite[(Off-host bucket<br/>Object Lock)]

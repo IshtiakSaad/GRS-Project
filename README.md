@@ -21,7 +21,7 @@ Python 3.12 · Django 5.2 · Django REST Framework · PostgreSQL 17 · JWT · Re
 |---|---|
 | 5 minutes | [Try it](#try-it) below, then the [tour](#a-ten-minute-tour-of-the-live-demo) |
 | 20 minutes | [The problem, before the code](docs/problem.md): who uses it, the ground it runs on, how offices go wrong, who might attack it, and what we assumed. Then [from finding to proof](docs/traceability.md), which follows each finding to the test that proves the response holds |
-| An hour | [Architecture](docs/architecture.md) · [17 decision records](docs/decisions/), each with the alternatives we rejected · [Scope](docs/scope.md): what v1 leaves out, and why · [Runbook](docs/runbook.md) · [Load and chaos tests](loadtest/README.md) |
+| An hour | [Architecture](docs/architecture.md) · [18 decision records](docs/decisions/), each with the alternatives we rejected · [Scope](docs/scope.md): what v1 leaves out, and why · [Runbook](docs/runbook.md) · [Load and chaos tests](loadtest/README.md) |
 
 ---
 
@@ -51,7 +51,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
 | Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the secret is available on request) |
 
-Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email is real: add your own address under Profile and the verification link arrives in your inbox, sent through Resend from `no-reply@grs.root-access.xyz` (three verification emails per account a day, and a daily cap for the whole demo, since anyone can type any address). The database is wiped and reseeded at 03:00 Dhaka time.
+Every number is on the unassigned `+880 10` prefix, so no real person can receive a message. A live deployment refuses that prefix, and the demo accepts nothing else. Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
 
 For the API: open https://grs.root-access.xyz/api/docs/. The reference starts with how to log in and the rules every endpoint follows, then lists the endpoints in the order a request meets them. Try `POST /api/v1/auth/login`, copy `access` from the answer into the **Bearer** field under Authentication, and every call you try after that is made as that user.
 
@@ -61,6 +61,7 @@ For the API: open https://grs.root-access.xyz/api/docs/. The reference starts wi
 2. **Work it as an officer** (`+8801000000011`, same department). Open **Queue** and press **Take the next request**. You may not get the one you just filed: you get the most urgent one waiting ([why](docs/decisions/0003-officers-take-the-next-request.md)). The list below the button shows the order the requests will be taken in. **Start work**, then **Ask the citizen** a question: the deadline clock pauses.
 3. **Answer as the citizen.** The request shows what the office asked. **Send your answer** and the clock resumes. Open **Who looked**: you see an office and a role, never a name ([why](docs/decisions/0017-staff-access-is-visible.md)).
 4. **Look as an administrator.** The **Dashboard** shows each statistic beside the number that would expose it being gamed ([why](docs/decisions/0016-every-statistic-has-a-counterweight.md)). **Reviews** holds late rejections and a sample of resolutions. The break-glass report lists every time an officer opened a request outside their department, with the reason given.
+5. **Confirm an email, for real.** As any citizen, open **Profile**, type your own address and save. The profile says it is not confirmed yet. A mail from *Grievance & Service Requests* arrives with one button; press it, come back to the profile tab, and it says confirmed without a reload. From then on, that citizen's request updates reach your inbox as well as the demo SMS inbox.
 
 ### On your machine
 
@@ -165,7 +166,7 @@ docker run --rm --network grs-project_default \
 - **No file is trusted.** Every upload is scanned by ClamAV and its real type read from its bytes before anyone can download it. If the scanner is down, files wait; none is approved unscanned.
 - **Problems reach a person.** Availability and latency are measured from every request Nginx serves. Burn-rate alerts, stuck messages, stuck uploads, and disk and certificate problems go to a phone, and an outside check covers the server going dark.
 - **A lost server loses about a minute.** The database ships its changes to a write-once bucket every minute. Each night, and on every push in CI, a drill restores from that bucket alone to a chosen moment and checks the result. Audit checkpoints sit in the same locked storage, so even root on the server cannot rewrite history unnoticed. On the live demo that bucket is on AWS S3 in Mumbai, reached through the server's instance role: no key is stored on the server.
-- **Personal data stays home.** SMS and email carry only a tracking number and a status; files are kept on storage the office runs itself.
+- **Personal data stays home.** SMS and email carry only a tracking number and a status, so the gateway and the mail relay that carry them learn nothing about the request; files are kept on storage the office runs itself.
 
 How the pieces fit: [docs/architecture.md](docs/architecture.md). Why each one is the way it is, and what we rejected: [docs/decisions/](docs/decisions/).
 
@@ -186,7 +187,7 @@ AWS `m7i-flex.large` (2 vCPU, 8 GB), Mumbai, 28 September 2026. The load was gen
 
 The chaos run found a real problem before it found none. With the broker down, each submission waited on it, and requests queued for up to 20 seconds. The circuit breaker in `apps/common/broker.py` is the fix; the numbers above are after it.
 
-Testing against the real thing corrected us twice more. Real ClamAV recognises the EICAR test file only at the very start of a file, where our first stand-in had found it anywhere; the stand-in now matches ClamAV, and the scan runs before the type check so a disguised file is caught as malware, not as a wrong type. And the browser tests caught the web app signing people out when the server answered "slow down" (`429`); it now retries and only a real `401` ends a session.
+Testing against the real thing corrected us twice more. Real ClamAV recognises the EICAR test file only at the very start of a file, where our first stand-in had found it anywhere; the stand-in now matches ClamAV, and the scan runs before the type check so a disguised file is caught as malware, not as a wrong type. And the browser tests caught the web app signing people out when the server answered "slow down" (`429`); it now retries and only a real `401` ends a session. Sending the first confirmation email to a real inbox showed its link pointing at `localhost`, a setting no test environment could get wrong; production now derives it from the domain and refuses to start with anything else.
 
 ---
 
