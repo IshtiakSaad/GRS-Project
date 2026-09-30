@@ -16,6 +16,10 @@ pytestmark = pytest.mark.django_db
 NEW = "another-long-passphrase"
 
 
+def _token_in(message) -> str:
+    return message.body.split("#token=", 1)[1].split()[0]
+
+
 def _citizen(**kw):
     user = factories.citizen(**kw)
     user.set_password(PASSWORD)
@@ -123,7 +127,7 @@ def test_email_is_verified_by_the_emailed_token(api, as_user):
     deliver_all()
     assert len(mail.outbox) == 1
     assert mail.outbox[0].to == ["rahima@example.com"]
-    token = mail.outbox[0].body.rsplit(": ", 1)[1].strip()
+    token = _token_in(mail.outbox[0])
 
     api.credentials()
     assert api.post("/api/v1/auth/email/verify", {"token": token}, format="json").status_code == 204
@@ -136,7 +140,7 @@ def test_email_token_is_void_once_the_address_changes(api, as_user):
     client = as_user(user)
     client.patch("/api/v1/me", {"email": "first@example.com"}, format="json")
     deliver_all()
-    token = mail.outbox[0].body.rsplit(": ", 1)[1].strip()
+    token = _token_in(mail.outbox[0])
     client.patch("/api/v1/me", {"email": "second@example.com"}, format="json")
     api.credentials()
     response = api.post("/api/v1/auth/email/verify", {"token": token}, format="json")
@@ -148,6 +152,20 @@ def test_the_emailed_link_opens_the_public_site(as_user, settings):
     as_user(_citizen()).patch("/api/v1/me", {"email": "rahima@example.com"}, format="json")
     deliver_all()
     assert "https://grs.example.org/verify-email#token=" in mail.outbox[0].body
+
+
+def test_the_verification_email_has_a_button_and_no_bare_token(as_user):
+    as_user(_citizen(preferred_language="en")).patch(
+        "/api/v1/me", {"email": "rahima@example.com"}, format="json"
+    )
+    deliver_all()
+    message = mail.outbox[0]
+    token = _token_in(message)
+    assert message.body.count(token) == 1  # only inside the link
+    [(html, kind)] = message.alternatives
+    assert kind == "text/html"
+    assert f"/verify-email#token={token}" in html and ">Confirm email</a>" in html
+    assert "ignore this email" in message.body and "ignore this email" in html
 
 
 def test_an_account_gets_three_verification_emails_a_day(as_user):

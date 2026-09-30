@@ -35,7 +35,9 @@ export default function VerifyEmail() {
         ) : (
           <ErrorNotice error={state} />
         )}
-        <ButtonLink href="/">{t("app.home")}</ButtonLink>
+        <ButtonLink href={state === "done" ? "/profile/" : "/"}>
+          {state === "done" ? t("profile.backToProfile") : t("app.home")}
+        </ButtonLink>
       </Card>
     </div>
   );

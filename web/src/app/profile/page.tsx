@@ -33,6 +33,18 @@ function Details({ me }: { me: Me }) {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
+  // The email is confirmed in another tab (the link in the inbox), so read the account again
+  // whenever this tab comes back into view.
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === "visible") void reload();
+    };
+    document.addEventListener("visibilitychange", refresh);
+    return () => document.removeEventListener("visibilitychange", refresh);
+  }, [reload]);
+
+  const savedEmail = Boolean(form.email) && form.email === me.email;
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -67,19 +79,19 @@ function Details({ me }: { me: Me }) {
         />
         <TextInput
           label={t("profile.email")}
-          hint={
-            form.email && form.email === me.email
-              ? me.email_verified
-                ? t("profile.emailVerified")
-                : t("profile.emailPending")
-              : t("profile.emailHint")
-          }
+          hint={savedEmail ? undefined : t("profile.emailHint")}
           type="email"
           autoComplete="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
           error={fieldError(error, "email")}
         />
+        {savedEmail &&
+          (me.email_verified ? (
+            <Notice tone="success">{t("profile.emailVerified")}</Notice>
+          ) : (
+            <Notice tone="warning">{t("profile.emailPending")}</Notice>
+          ))}
         <Select
           label={t("auth.smsLanguage")}
           value={form.preferred_language}

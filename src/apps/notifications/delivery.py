@@ -16,7 +16,7 @@ from django.utils import timezone
 
 from . import providers
 from .models import MAX_ATTEMPTS, Channel, DeliveryStatus, Notification
-from .templates import SENSITIVE, render
+from .templates import SENSITIVE, render, render_html
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,8 @@ def _send(n: Notification) -> str:
     if n.channel == Channel.EMAIL:
         if not n.recipient.email:
             raise providers.ProviderError("recipient has no email address")
-        return providers.send_email(n.recipient.email, subject, body)
+        html = render_html(n.template, n.recipient.preferred_language, n.payload)
+        return providers.send_email(n.recipient.email, subject, body, html)
     raise providers.ProviderError(f"channel {n.channel} is not delivered by a provider")
 
 

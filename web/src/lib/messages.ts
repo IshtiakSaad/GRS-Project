@@ -162,8 +162,14 @@ export const messages = {
     "Optional. Updates also come by email once you confirm it.",
     "ঐচ্ছিক। নিশ্চিত করলে হালনাগাদ ইমেইলেও আসবে।",
   ],
-  "profile.emailVerified": ["Confirmed", "নিশ্চিত"],
-  "profile.emailPending": ["Not confirmed yet: check your inbox", "এখনও নিশ্চিত নয়: ইনবক্স দেখুন"],
+  "profile.emailVerified": [
+    "✓ Email confirmed. Request updates also come to this address.",
+    "✓ ইমেইল নিশ্চিত। আবেদনের হালনাগাদ এই ঠিকানায়ও আসবে।",
+  ],
+  "profile.emailPending": [
+    "Not confirmed yet: open the link we emailed you. If it is not in your inbox, check the spam folder.",
+    "এখনও নিশ্চিত নয়: আমাদের পাঠানো ইমেইলের লিংকটি খুলুন। ইনবক্সে না পেলে স্প্যাম ফোল্ডার দেখুন।",
+  ],
   "profile.password": ["Change password", "পাসওয়ার্ড বদলান"],
   "profile.currentPassword": ["Current password", "বর্তমান পাসওয়ার্ড"],
   "profile.passwordChanged": [
@@ -185,6 +191,7 @@ export const messages = {
   "profile.confirmNumber": ["Confirm number", "নম্বর নিশ্চিত করুন"],
   "profile.verifyEmailTitle": ["Confirm your email", "ইমেইল নিশ্চিত করুন"],
   "profile.emailConfirmed": ["Email confirmed.", "ইমেইল নিশ্চিত হয়েছে।"],
+  "profile.backToProfile": ["Back to your profile", "প্রোফাইলে ফিরুন"],
 
   // --- roles -------------------------------------------------------------------------------
   "role.CITIZEN": ["Citizen", "নাগরিক"],

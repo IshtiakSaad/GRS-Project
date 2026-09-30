@@ -30,9 +30,9 @@ def send_sms(phone: str, body: str) -> str:
     return f"fake-{message.pk}"
 
 
-def send_email(address: str, subject: str, body: str) -> str:
+def send_email(address: str, subject: str, body: str, html: str | None = None) -> str:
     try:
-        send_mail(subject, body, None, [address], fail_silently=False)
+        send_mail(subject, body, None, [address], fail_silently=False, html_message=html)
     except OSError as exc:  # SMTP errors are OSError subclasses
         raise ProviderError(str(exc)) from exc
     return ""
