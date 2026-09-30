@@ -25,7 +25,7 @@ flowchart LR
   worker -->|audit checkpoints, locked| s3
 ```
 
-One server, one Compose file; every part can move to its own host without code changes. [21 more diagrams](docs/diagrams.md), from the request state machine to the audit chain and the nightly restore drill.
+One server, one Compose file; every part can move to its own host without code changes. Two more pictures below; [all 21 diagrams](docs/diagrams.md) go from sign-up and two-step login to the audit chain and the nightly restore drill.
 
 | | |
 |---|---|
@@ -54,6 +54,53 @@ One server, one Compose file; every part can move to its own host without code c
 - **The operator** is one person, asleep at 3 a.m. Alerts reach a phone only when a target is really at risk. The database streams to a separate bucket every minute, and a restore drill runs every night.
 
 The full picture, with the reasoning, is in [docs/problem.md](docs/problem.md).
+
+### A request's life
+
+Eight states, and who may move a request between them. The same table drives the API, a test walks every cell of it, and PostgreSQL refuses any row that no action could have produced.
+
+```mermaid
+stateDiagram-v2
+  [*] --> DRAFT: citizen creates
+  DRAFT --> SUBMITTED: submit<br/>tracking number and deadline set
+  SUBMITTED --> ASSIGNED: officer takes the next one<br/>or admin assigns
+  ASSIGNED --> IN_PROGRESS: officer starts
+  IN_PROGRESS --> AWAITING_CITIZEN: officer asks the citizen<br/>deadline clock pauses
+  AWAITING_CITIZEN --> IN_PROGRESS: citizen answers
+  IN_PROGRESS --> RESOLVED: officer resolves
+  RESOLVED --> SUBMITTED: citizen reopens within 30 days<br/>or admin overturns after review
+  REJECTED --> SUBMITTED: reopen or overturn
+  state "Any open state" as OPEN
+  OPEN --> REJECTED: officer or admin rejects, with a reason
+  OPEN --> WITHDRAWN: citizen withdraws
+  WITHDRAWN --> [*]
+```
+
+### Why a submission is never lost or doubled
+
+A phone on 3G often sends a request and never hears the answer, so it retries. The retry gets the first answer back. Everything the submission changes commits together, including the message that announces it, so a crashed queue can delay that message but never lose it.
+
+```mermaid
+sequenceDiagram
+  participant P as Phone
+  participant A as API
+  participant D as PostgreSQL
+  participant Q as Queue and worker
+  P->>A: submit, with an Idempotency-Key
+  alt key seen before
+    A-->>P: the stored answer: same tracking number, no second request
+  else first time
+    rect rgb(235, 245, 235)
+      Note over A,D: one transaction
+      A->>D: lock the request, check the action is allowed
+      A->>D: tracking number with a check digit, deadline in working days
+      A->>D: timeline event, audit row, notification row, stored answer
+    end
+    A-->>P: tracking number, such as 26-0000042-7
+    A->>Q: after commit: send the message
+    Note over Q,D: Queue down? A sweeper finds the row in PostgreSQL<br/>within 30 s of recovery. Tested: 401 of 401 delivered.
+  end
+```
 
 ---
 
