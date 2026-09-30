@@ -305,7 +305,7 @@ sequenceDiagram
   A->>D: delay check for this account and device, before hashing
   A->>A: check the Argon2id hash
   A-->>W: mfa_required, mfa_token valid 5 minutes
-  Ad->>W: 6-digit code from the authenticator app
+  Ad->>W: 6-digit code from the authenticator app<br/>(demo administrator only: the fixed code 123456)
   W->>A: POST /auth/2fa/verify
   A->>D: decrypt the TOTP secret, match the code
   A->>D: accept only if this time step is newer than the last one used

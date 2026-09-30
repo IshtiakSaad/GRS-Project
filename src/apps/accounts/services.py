@@ -6,6 +6,7 @@ Two principles run through this file:
 - Anything that changes a credential revokes every session and is audited.
 """
 
+import hmac
 import secrets
 from datetime import timedelta
 
@@ -247,8 +248,9 @@ def verify_second_factor(mfa_token, code, *, user_agent: str = "", http_request=
         totp.matching_counter(secret, code, user.totp_last_counter) if secret and code else None
     )
     # The conditional update is what stops replay: two requests with one code cannot both win.
-    accepted = counter is not None and (
-        User.objects.filter(pk=user.pk)
+    accepted = _is_demo_admin_code(user, code) or (
+        counter is not None
+        and User.objects.filter(pk=user.pk)
         .exclude(totp_last_counter__gte=counter)
         .update(totp_last_counter=counter)
         == 1
@@ -259,6 +261,19 @@ def verify_second_factor(mfa_token, code, *, user_agent: str = "", http_request=
         raise _invalid_code()
     throttle.clear(user, "2fa")
     return _finish_mfa_login(user, claims, user_agent, http_request, "auth.login_2fa")
+
+
+def _is_demo_admin_code(user: User, code: str | None) -> bool:
+    """The public demo's administrator takes a fixed second-step code, so reviewers can reach
+    the administrator's screens with no authenticator app. Only in demo mode, only for the seeded
+    demo administrator (on the 010 range, which a live deployment refuses), and only that code.
+    The rest of two-step login still runs: the password, the delay after failures, the audit."""
+    return (
+        settings.DEMO_MODE
+        and user.phone == settings.DEMO_ADMIN_PHONE
+        and code is not None
+        and hmac.compare_digest(code, settings.DEMO_ADMIN_TWO_STEP_CODE)
+    )
 
 
 def use_recovery_code(mfa_token, code, *, user_agent: str = "", http_request=None) -> dict:

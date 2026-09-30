@@ -183,6 +183,11 @@ FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS")
 # and exposes the fake SMS inbox. Never set on a system with real citizens.
 DEMO_MODE = env.bool("DEMO_MODE", default=False)
 SMS_BACKEND = env("SMS_BACKEND", default="fake")
+# Demo mode only: the seeded demo administrator's second step accepts this fixed code, so
+# reviewers can see the administrator's screens without an authenticator app. Nothing else
+# accepts it, and outside demo mode it does not exist (apps/accounts/services.py).
+DEMO_ADMIN_PHONE = "+8801000000001"
+DEMO_ADMIN_TWO_STEP_CODE = "123456"
 # Codes by SMS, for the whole site, per hour: the limit per phone does not stop someone asking
 # for codes to thousands of numbers, each one paid for (apps/accounts/otp.py). Size it above
 # the busiest real hour; when it is reached, codes pause for everyone until the hour rolls on.

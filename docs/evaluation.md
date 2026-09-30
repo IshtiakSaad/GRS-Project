@@ -363,7 +363,7 @@ A sixth kind of finding came from walking each role's sign-up by hand. The demo'
 | Number | Command |
 |---|---|
 | Test counts, coverage, suite time | `docker build --target test -t grs-app:test .`, then the `docker run … grs-app:test` line in the [README](../README.md#on-your-machine), with `pytest --cov=apps --cov=config` |
-| Browser tests | `cd web && E2E_ADMIN_TOTP_SECRET=<from seed_demo> npx playwright test` |
+| Browser tests | `cd web && npx playwright test` |
 | Load, chaos, edge | [loadtest/README.md](../loadtest/README.md) |
 | Restore and point-in-time recovery | `deploy/scripts/restore-check.sh`, `deploy/scripts/pitr-check.sh` |
 | Password hash cost | `docker run --rm --cpus 1 -v "$PWD/tools:/tools:ro" --entrypoint python grs-app:test /tools/bench_password_hash.py` |

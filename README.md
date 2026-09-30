@@ -69,7 +69,7 @@ Open https://grs.root-access.xyz and log in with an account below. The app opens
 | Officer, Birth and Death Registration | `+8801000000011`, `+8801000000012` | `demo-password-2026` |
 | Officer, Land Office | `+8801000000013` | `demo-password-2026` |
 | Officer, Trade Licence Section | `+8801000000014` | `demo-password-2026` |
-| Administrator | `+8801000000001` | `demo-password-2026` + a two-step code (the key for your authenticator app is in the submission email) |
+| Administrator | `+8801000000001` | `demo-password-2026`, then the two-step code `123456` |
 
 The live site runs in **demo mode**: it sends no SMS, shows codes on screen instead, and so accepts only numbers on the unassigned `+880 10` prefix, which no real phone has. Your own number is refused, and the screen says why. A deployment with an SMS provider turns demo mode off, accepts every Bangladeshi operator, and refuses the `010` prefix ([limitations](docs/limitations.md#1-the-live-demo-runs-in-demo-mode)). Email is real: add your own address under Profile and the confirmation link arrives in your inbox from *Grievance & Service Requests* (`no-reply@grs.root-access.xyz`, sent through Resend; the domain is new, so look in spam too). Three confirmation emails per account a day, and a daily cap for the whole demo, since anyone can type any address ([why](docs/decisions/0018-email-reaches-real-inboxes.md)). The database is wiped and reseeded at 03:00 Dhaka time.
 
@@ -98,11 +98,10 @@ docker compose run --rm --no-deps api python manage.py seed_demo
 | Web app | http://localhost:8080 |
 | API docs | http://localhost:8080/api/docs/ |
 | Health | http://localhost:8080/health/ready |
-| Email inbox (Mailpit) | http://localhost:8025 |
 
-`seed_demo` prints the demo password and the administrator's two-step secret; add the secret to any authenticator app. Locally, uploads are checked by a small stand-in that flags the EICAR test file just as ClamAV does, so the stack runs without ClamAV's 1.5 GB of memory; production uses ClamAV itself, and `docker compose --profile full up -d clamav` starts it locally.
+`seed_demo` loads the same demo accounts as the live site: every password is `demo-password-2026`, and the administrator's two-step code is `123456`. Locally, uploads are checked by a small stand-in that flags the EICAR test file just as ClamAV does, so the stack runs without ClamAV's 1.5 GB of memory; production uses ClamAV itself, and `docker compose --profile full up -d clamav` starts it locally.
 
-To work on the web app with hot reload, run `npm ci && npm run dev` in `web/` (http://localhost:3000; it proxies `/api` to the stack on :8080). The end-to-end tests run against the stack: `E2E_ADMIN_TOTP_SECRET=<secret from seed_demo> npx playwright test`.
+To work on the web app with hot reload, run `npm ci && npm run dev` in `web/` (http://localhost:3000; it proxies `/api` to the stack on :8080). The end-to-end tests run against the stack: `npx playwright test`.
 
 Run the backend tests against the running stack:
 
@@ -167,7 +166,7 @@ docker run --rm --network grs-project_default \
 |---|---|
 | Redis | Two instances split by how they may fail: a broker that never evicts, and a cache that may evict anything and fails open ([decision 4](docs/decisions/0004-two-redis-instances.md)) |
 | Celery | Notification delivery, file verification, deadline recompute, overdue escalation, audit sealing, cleanup |
-| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo); Mailpit catches everything locally |
+| Email notifications and email verification | Verification link by email; request updates by email once the address is verified. Delivered to real inboxes through an SMTP relay (Resend on the demo) |
 | Audit logs | Append-only (trigger + grants), hash-chained every minute, checkpoints locked in write-once storage. A separate log of which staff opened which request, visible to the citizen |
 | Rate limiting | Nginx per address, plus per-phone and per-user limits in Redis |
 | Frontend UI with live link | https://grs.root-access.xyz: 22 pages for citizen, officer and administrator, Bangla first, built for phones. Next.js exported to static files that the same Nginx serves, with no Node server ([decision 9](docs/decisions/0009-static-web-app.md)). Playwright walks one request through every role in CI |
