@@ -184,12 +184,23 @@ FIELD_ENCRYPTION_KEYS = env.list("FIELD_ENCRYPTION_KEYS")
 DEMO_MODE = env.bool("DEMO_MODE", default=False)
 SMS_BACKEND = env("SMS_BACKEND", default="fake")
 
+# Email leaves through SMTP. Locally that is Mailpit, which delivers nothing and shows every
+# message at :8025; production relays through a provider (Resend on the demo) that delivers to
+# real inboxes. The provider's key is EMAIL_HOST_PASSWORD, set only in the server's .env.
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = env("EMAIL_HOST", default="mailpit")
 EMAIL_PORT = env.int("EMAIL_PORT", default=1025)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_SSL = env.bool("EMAIL_USE_SSL", default=False)  # implicit TLS, port 465
 EMAIL_TIMEOUT = 10
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@grs.example.com")
 PUBLIC_BASE_URL = env("PUBLIC_BASE_URL", default="http://localhost:8080")
+# A verification email goes to whatever address someone types, so it is the one message a
+# stranger can aim at a third party. Capped per account, and for the whole site below the
+# provider's daily quota, so a flood cannot use up the quota the real users need.
+EMAIL_VERIFY_PER_ACCOUNT = 3  # a day
+EMAIL_VERIFY_DAILY_CAP = env.int("EMAIL_VERIFY_DAILY_CAP", default=60)
 
 # --- Attachments -------------------------------------------------------------------------------
 # Files never pass through the app servers: clients upload to and download from the object

@@ -59,5 +59,13 @@ DEMO_MODE=true
 
 GUNICORN_WORKERS=3
 LOG_LEVEL=INFO
+
+# Email to real inboxes through an SMTP relay (Resend here). Production refuses to start until
+# EMAIL_HOST_PASSWORD, the provider's API key, is filled in.
+EMAIL_HOST=smtp.resend.com
+EMAIL_PORT=465
+EMAIL_USE_SSL=true
+EMAIL_HOST_USER=resend
+EMAIL_HOST_PASSWORD=
 ENV
 echo "wrote .env for $DOMAIN (mode 600). Next: deploy/scripts/init-tls.sh"

@@ -204,3 +204,9 @@ msgstr "এই সিদ্ধান্তের পর আবেদনটি �
 
 msgid "Say why the decision is overturned (at least 10 characters)."
 msgstr "সিদ্ধান্ত কেন বাতিল করা হচ্ছে লিখুন (অন্তত ১০ অক্ষর)।"
+
+msgid "Too many verification emails for this account today. Try again later."
+msgstr "আজ এই অ্যাকাউন্ট থেকে অনেক বেশি যাচাই ইমেইল পাঠানো হয়েছে। পরে আবার চেষ্টা করুন।"
+
+msgid "Verification emails are paused for today. Try again tomorrow."
+msgstr "আজকের মতো যাচাই ইমেইল পাঠানো বন্ধ আছে। আগামীকাল আবার চেষ্টা করুন।"

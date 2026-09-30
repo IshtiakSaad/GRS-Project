@@ -16,6 +16,6 @@ $COMPOSE stop nginx 2>/dev/null || true   # free port 80 for the standalone chal
 $COMPOSE run --rm --no-deps -p 80:80 --entrypoint certbot certbot certonly \
   --standalone $STAGING --non-interactive --agree-tos -m "$LETSENCRYPT_EMAIL" \
   --cert-name "$GRS_DOMAIN" \
-  -d "$GRS_DOMAIN" -d "files.$GRS_DOMAIN" -d "mail.$GRS_DOMAIN"
+  -d "$GRS_DOMAIN" -d "files.$GRS_DOMAIN"
 
 echo "certificate ready for $GRS_DOMAIN. Next: deploy/scripts/deploy.sh"

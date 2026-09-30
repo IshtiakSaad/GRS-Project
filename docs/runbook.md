@@ -88,7 +88,7 @@ Production settings refuse to start with the placeholder keys from `.env.example
 
 ## First deploy (one server)
 
-One Ubuntu 24.04 server (2 vCPU, 4 GB is enough for the demo), DNS pointing three names at it: `<domain>`, `files.<domain>`, `mail.<domain>`.
+One Ubuntu 24.04 server (2 vCPU, 4 GB is enough for the demo), DNS pointing two names at it: `<domain>` and `files.<domain>`, plus the records the email provider asks for (see [Email](#email)).
 
 ```bash
 git clone https://github.com/IshtiakSaad/GRS-Project.git && cd GRS-Project
@@ -167,6 +167,17 @@ $C up -d && $C run --rm migrate python manage.py verify_audit --restored-copy
 ## Audit checkpoints
 
 `manage.py verify_audit` checks the audit chain against the locked copies in the off-host bucket (`anchors/<chain id>/`); it fails if the bucket cannot be read. `--local-only` checks against the database's own anchors (weaker: whoever can rewrite the rows can rewrite those too). `--restored-copy` is for a restored backup, which legitimately ends before the newest copies.
+
+## Email
+
+Email leaves through an SMTP relay that delivers to real inboxes; the demo uses Resend's free plan (100 emails a day). Production refuses to start with Mailpit as the relay, a `localhost` link, or a relay user without a key.
+
+1. At the provider, add the sending domain (`<domain>`) and add the DNS records it lists (SPF, DKIM, and the bounce MX) at the registrar. Wait until the provider shows the domain verified.
+2. Create an API key that can only send, and put it in the server's `.env` as `EMAIL_HOST_PASSWORD`. The other lines are written by `gen-env.sh`: `EMAIL_HOST=smtp.resend.com`, `EMAIL_PORT=465`, `EMAIL_USE_SSL=true`, `EMAIL_HOST_USER=resend`.
+3. Deploy. Links in emails point at `https://<domain>` and the sender is `no-reply@<domain>` unless `PUBLIC_BASE_URL` or `DEFAULT_FROM_EMAIL` say otherwise.
+4. Check: log in as a demo citizen, add your own address under Profile, and click the link that arrives.
+
+A verification email goes to whatever address someone types, so it is the one message a stranger can aim at a third party. Each account gets three a day, and the whole site `EMAIL_VERIFY_DAILY_CAP` (60), below the provider's quota so a flood cannot use up what real users need. Both are counted from the outbox in PostgreSQL, so they hold when Redis is down. Status updates go only to addresses already verified.
 
 ## Alerts
 
