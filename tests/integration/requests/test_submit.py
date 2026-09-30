@@ -74,9 +74,14 @@ def test_the_deadline_skips_holidays_and_suspensions(as_user):
     later, _ = _submitted(c, api, HTTP_IDEMPOTENCY_KEY=key())
     assert later.due_at.date() > baseline.due_at.date()
 
+    # The next working day: the day after may be a Friday or Saturday, which a suspension
+    # would not move.
+    next_working_day = first_working_day + timedelta(days=1)
+    while next_working_day.weekday() in (4, 5):
+        next_working_day += timedelta(days=1)
     national = SlaSuspension.objects.create(
-        starts_on=first_working_day + timedelta(days=1),
-        ends_on=first_working_day + timedelta(days=1),
+        starts_on=next_working_day,
+        ends_on=next_working_day,
         reason="Internet shutdown",
         created_by=c.admin,
     )
